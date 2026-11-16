@@ -93,7 +93,7 @@ Nuance for the discussion: the reward (+1 per correct segment) is built from the
 |---|---|
 | 1. MDP definition | Done |
 | 2. Repository structure | Done |
-| 3. Environment (`src/environment.py`) | To do |
+| 3. Environment (`src/environment.py`) | Done |
 | 4. Value iteration (reference optimum) | To do |
 | 5. Q-learning, SARSA, Monte Carlo + comparison | To do |
 | 6. Reward experiments | To do |
