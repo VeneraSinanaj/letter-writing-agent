@@ -109,6 +109,14 @@ Nuance for the discussion: the reward (+1 per correct segment) is built from the
 - **Cause: exploration.** Random ε-greedy exploration rarely tries the long sequences of unrewarded "going back" moves of the optimal drawings. With 100,000 episodes on H: 97 % of v* (vs 93 %), and only ~12 % of the states visited.
 - Runs agree at the end (std ≤ 1.4 % of v*) but differ a lot during learning.
 
+### Step 5b — SARSA and Monte Carlo (`notebooks/04_sarsa_monte_carlo.ipynb`)
+- Same conditions as Q-learning (letters, 30,000 episodes, ε schedule, 5 seeds, evaluation); only the update rule and the step size change. SARSA: Q(S, A) ← Q(S, A) + α [R + γ Q(S', A') − Q(S, A)]. Monte Carlo: on-policy, first-visit, Q(s, a) ← Q(s, a) + step × [G − Q(s, a)], with step = 1/N (sample average, course formula) or a constant α.
+- **Step sizes must be chosen per algorithm**: SARSA with α = 0.5 learns and then degrades (its target depends on a sometimes random next action, so it is noisy); α = 0.1 works. Monte Carlo fails whatever α (0.02–0.1); we keep α = 0.05 for the constant-step version.
+- **SARSA ≈ Q-learning in final quality** (84–100 % of v*, perfect drawings in 90–100 % of the cases) but **≈ 1.5× slower** (first perfect drawing after 6,500–19,500 episodes vs 5,000–12,500) and **less stable** (sudden drops of the greedy return, even at the end).
+- **"SARSA is more cautious" is not confirmed**: at the end the training returns are almost equal (L: 8.00 vs 7.95). The cliff-walking effect needs very costly exploratory mistakes; in our environment a random move costs at most −1.35 and can be repaired, so the safest drawing is also the optimal one.
+- **Monte Carlo fails on every letter (both versions): the "giving up" trap.** The agent learns to draw one to five segments and press STOP (V, X: STOP immediately). From the start, playing at random is worth about −11 on average, stopping immediately only −7 (L, −1 per missing segment). Judged by the returns of its own mostly random policy, "continue" looks worse than "stop", and the agent never gets out. Q-learning escapes thanks to the max, SARSA thanks to bootstrapping.
+- **With a stronger early-stop penalty (−3 per missing segment)**, Monte Carlo learns L, Z and V perfectly and part of the others, but still fails on X; Q-learning is unaffected (93–100 %). The reward and the algorithm interact; Monte Carlo remains much less sample-efficient (one return per episode, high variance, updates only at the end).
+
 ---
 
 ## Algorithm comparison (for the discussion)
@@ -118,9 +126,9 @@ Filled in step by step with the results of our own experiments.
 | Algorithm | Advantages | Disadvantages | What our experiments show |
 |---|---|---|---|
 | **Value iteration** (DP, ch. 4) | Exact optimum; guaranteed convergence; very few iterations | Needs the full model p(s′, r \| s, a); must sweep **all** states, even useless ones; memory and time grow with 2^(segments) (curse of dimensionality) | Optimum for every letter in 13–23 iterations (1–2 s), but building the model takes up to 6 s and would be impossible on a 7×7 grid (~26 million states) |
-| **Q-learning** (TD, off-policy, ch. 6) | Model-free (only plays); visits only the useful states; off-policy: learns the greedy policy while exploring; fast | No guarantee of reaching the optimum in limited time; depends on exploration and parameters (α, ε, episodes); still a table: no generalisation to unseen letters | All letters drawn perfectly, but 93–100 % of v*; ~12 % of the states of H visited; 2–4 s per run |
-| **SARSA** (TD, on-policy, ch. 6) | *Expected:* learns the value of the policy it actually follows (exploration included): more cautious, smoother learning | *Expected:* optimal only if ε → 0; may be slower to reach the optimum | To do (step 5b) |
-| **Monte Carlo** (on-policy, ch. 5) | *Expected:* no bootstrapping, so unbiased estimates; simple (average of returns) | *Expected:* waits for the end of the episode; high variance; needs terminating episodes (our 50-step cut is an approximation); exploration problem | To do (step 5b) |
+| **Q-learning** (TD, off-policy, ch. 6) | Model-free (only plays); visits only the useful states; off-policy: learns the greedy policy while exploring; the max values the best continuation, which protects it from the "giving up" trap; fast | No guarantee of reaching the optimum in limited time; depends on exploration and parameters (α, ε, episodes); still a table: no generalisation to unseen letters | All letters drawn perfectly, 93–100 % of v*; fastest learner (first perfect drawing after 5,000–12,500 episodes); ~12 % of the states of H visited; 2–4 s per run |
+| **SARSA** (TD, on-policy, ch. 6) | Learns the value of the policy it actually follows (exploration included); bootstrapping lets it escape the "giving up" trap | Target depends on the (sometimes random) next action: noisier, needs a smaller α; optimal only if ε → 0; slower | Same final quality as Q-learning (84–100 % of v*) but ≈1.5× more episodes and unstable curves; with α = 0.5 it degrades. Expected "caution" not observed: our environment has no costly "cliff" |
+| **Monte Carlo** (on-policy, ch. 5) | No bootstrapping, so unbiased estimates of the returns of the current policy; simplest idea (average of returns) | Waits for the end of the episode; high variance; needs terminating episodes (our 50-step cut is an approximation); judges actions by the returns of its current, mostly random, policy | Fails on every letter (both versions): learns to draw a few segments and STOP ("giving up" trap). With a stronger early-stop penalty it learns 3 letters perfectly, still far behind Q-learning |
 | **DQN** (deep RL) | *Expected:* generalises across states and letters (unseen letters); scales to large grids | *Expected:* unstable, no convergence guarantee, many hyperparameters, slower, less interpretable | To do (step 7) |
 
 ---
@@ -134,7 +142,7 @@ Filled in step by step with the results of our own experiments.
 | 3. Environment (`src/environment.py`) | Done |
 | 4. Value iteration (reference optimum) | Done |
 | 5a. Q-learning | Done |
-| 5b. SARSA, Monte Carlo + comparison | To do |
+| 5b. SARSA, Monte Carlo + comparison | Done |
 | 6. Reward experiments | To do |
 | 7. DQN + test on unseen letters | To do |
 | 8. Figures, report, slides | To do |

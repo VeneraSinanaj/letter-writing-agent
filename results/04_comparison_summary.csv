@@ -1,0 +1,41 @@
+letter,method,pct_optimum_mean,pct_optimum_std,perfect_final
+I,Q-learning,97.39,0.99,1.0
+I,SARSA,95.26,1.19,1.0
+I,MC (average),-73.16,7.39,0.0
+I,MC (constant α),-72.27,0.0,0.0
+L,Q-learning,100.0,0.0,1.0
+L,SARSA,100.0,0.0,1.0
+L,MC (average),-30.08,44.74,0.1
+L,MC (constant α),-56.1,4.94,0.0
+T,Q-learning,97.12,1.01,1.0
+T,SARSA,96.9,1.15,1.0
+T,MC (average),-66.69,10.26,0.0
+T,MC (constant α),-66.87,14.03,0.0
+E,Q-learning,97.41,0.89,1.0
+E,SARSA,98.66,0.02,1.0
+E,MC (average),-23.98,10.98,0.0
+E,MC (constant α),-53.15,17.54,0.0
+F,Q-learning,97.61,1.01,1.0
+F,SARSA,97.58,0.41,1.0
+F,MC (average),-49.12,2.69,0.0
+F,MC (constant α),-82.24,0.0,0.0
+H,Q-learning,93.39,0.53,1.0
+H,SARSA,94.49,1.03,1.0
+H,MC (average),-45.0,4.88,0.0
+H,MC (constant α),-32.21,12.16,0.0
+N,Q-learning,97.78,1.11,1.0
+N,SARSA,83.56,32.88,0.9
+N,MC (average),-20.6,9.15,0.0
+N,MC (constant α),-31.74,24.91,0.0
+Z,Q-learning,98.89,1.36,1.0
+Z,SARSA,100.0,0.0,1.0
+Z,MC (average),-16.32,9.34,0.0
+Z,MC (constant α),-17.79,10.55,0.0
+V,Q-learning,99.38,1.23,1.0
+V,SARSA,100.0,0.0,1.0
+V,MC (average),-59.26,17.56,0.0
+V,MC (constant α),-70.65,0.04,0.0
+X,Q-learning,96.87,1.41,1.0
+X,SARSA,97.04,0.33,1.0
+X,MC (average),-93.91,0.0,0.0
+X,MC (constant α),-75.68,2.4,0.0
