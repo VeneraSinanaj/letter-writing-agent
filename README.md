@@ -131,6 +131,13 @@ Nuance for the discussion: the reward (+1 per correct segment) is built from the
 - **Delayed reward** (no +1 per segment, signal only at STOP): Q-learning still learns 8 letters out of 10 perfectly (3 runs each), but 2–3× more slowly (first perfect drawing after 13,000–27,000 episodes vs 5,000–12,500), and fails on E and H, the letters with the longest optimal drawings (15 and 17 steps). Perfect drawings appear only once ε is small: with strong exploration the agent almost never completes the letter, so it almost never sees the final reward. SARSA learns only L (V in some runs), Monte Carlo nothing.
 - Discussion: reward shaping (+1 per segment) does not change the length of the optimal drawings, but makes them much easier to discover; a badly chosen penalty can create a trap that some algorithms (Monte Carlo) cannot escape while others (Q-learning) are robust.
 
+### Step 7a — Deep Q-Network on the 10 letters (`notebooks/07_dqn.ipynb`, `src/dqn.py`)
+- **One network for all letters.** Observation of 170 numbers: target letter (72 bits, one per possible segment of the 5×5 grid), segments already drawn (72), pen position (25, one-hot), pen down (1). MLP 170 → 256 → 256 → 17. Target y = R + γ max_a Q(o′, a; θ⁻) (y = R after STOP), Huber loss, Adam (lr 0.0005). Experience replay (100,000 transitions, mini-batches of 64, one gradient step every 4 steps), target network updated every 1,000 steps. 300,000 steps on the 10 letters together (random letter at each episode), ε from 1 to 0.05 over 60 % of the steps, 3 seeds. Trained networks saved in `results/07_dqn_seed*.pt`.
+- **It learns the 10 letters**: 87–100 % of v* per letter (mean over 3 runs), perfect drawings 100 % for 8 letters (F 89 %, V 67 %); 2 runs out of 3 draw every letter perfectly at the end.
+- **Much more sample-efficient than tabular Q-learning**: ~1,150–1,200 episodes per letter until every letter is perfect, vs 5,000–12,500 per letter. Reasons: experience replay (each transition reused many times) and generalisation (shared sub-skills between letters, values inferred for similar states).
+- **Closer to the optimum on several letters** (I, T, E, H: 99–100 % vs 93–97 % for Q-learning): states never visited get values from similar visited states.
+- **Slower per step** (4–5.5 min per run vs ~35 s for the 10 Q-learning tables) and **unstable**: the fraction of perfect drawings oscillates strongly even at the end (seed 1: 90 → 71 → 51 → 90 → 43 → 87 % over the last 50,000 steps) — the "deadly triad" (function approximation + bootstrapping + off-policy, Sutton & Barto §11.3). Possible improvements: smaller learning rate at the end, Double DQN, keeping the best network, longer training.
+
 ---
 
 ## Algorithm comparison (for the discussion)
@@ -143,7 +150,7 @@ Filled in step by step with the results of our own experiments.
 | **Q-learning** (TD, off-policy, ch. 6) | Model-free (only plays); visits only the useful states; off-policy: learns the greedy policy while exploring; the max values the best continuation, which protects it from the "giving up" trap; fast | No guarantee of reaching the optimum in limited time; depends on exploration and parameters (α, ε, episodes); still a table: no generalisation to unseen letters | All letters drawn perfectly, 93–100 % of v*; fastest learner (first perfect drawing after 5,000–12,500 episodes); ~12 % of the states of H visited; 2–4 s per run |
 | **SARSA** (TD, on-policy, ch. 6) | Learns the value of the policy it actually follows (exploration included); bootstrapping lets it escape the "giving up" trap | Target depends on the (sometimes random) next action: noisier, needs a smaller α; optimal only if ε → 0; slower | Same final quality as Q-learning (84–100 % of v*) but ≈1.5× more episodes and unstable curves; with α = 0.5 it degrades. Expected "caution" not observed: our environment has no costly "cliff" |
 | **Monte Carlo** (on-policy, ch. 5) | No bootstrapping, so unbiased estimates of the returns of the current policy; simplest idea (average of returns) | Waits for the end of the episode; high variance; needs terminating episodes (our 50-step cut is an approximation); judges actions by the returns of its current, mostly random, policy | Fails on every letter (both versions): learns to draw a few segments and STOP ("giving up" trap). With a stronger early-stop penalty it learns 3 letters perfectly, still far behind Q-learning |
-| **DQN** (deep RL) | *Expected:* generalises across states and letters (unseen letters); scales to large grids | *Expected:* unstable, no convergence guarantee, many hyperparameters, slower, less interpretable | To do (step 7) |
+| **DQN** (deep RL) | One network for all letters; generalises between similar states and letters (values for states never visited); experience replay reuses each transition; scales to large state spaces | Unstable (deadly triad), no convergence guarantee; many hyperparameters; more computation per step; harder to interpret | 10 letters with one network, 87–100 % of v*; ~1,200 episodes per letter (vs 5,000–12,500 for Q-learning); 99–100 % on letters where Q-learning stays at 93–97 %; but strong oscillations even at the end (1 run out of 3 not perfect at the end); 4–5.5 min per run. Unseen letters: to do (step 7b) |
 
 ---
 
@@ -159,5 +166,6 @@ Filled in step by step with the results of our own experiments.
 | 5b. SARSA, Monte Carlo + comparison | Done |
 | 6a. Reward and writing style | Done |
 | 6b. Reward and learnability (early-stop penalty, delayed reward) | Done |
-| 7. DQN + test on unseen letters | To do |
+| 7a. DQN on the 10 letters | Done |
+| 7b. DQN on unseen letters (generalisation) | To do |
 | 8. Figures, report, slides | To do |
