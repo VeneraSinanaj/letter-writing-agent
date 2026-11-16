@@ -1,0 +1,4 @@
+# Files created automatically by Python and Jupyter: not part of the project
+__pycache__/
+.ipynb_checkpoints/
+.venv/
