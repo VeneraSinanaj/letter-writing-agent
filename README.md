@@ -101,6 +101,28 @@ Nuance for the discussion: the reward (+1 per correct segment) is built from the
 - **Convergence is exact and fast**: 13 to 23 iterations, more for letters with more segments. Δ stays close to 2 and then drops to exactly 0 once the number of iterations exceeds the longest optimal path (no gradual decrease, unlike Frozen Lake, because there is no randomness).
 - Building the model takes up to ~6 s for the 12-segment letters, value iteration ~1–2 s; this grows with 2^(segments) (curse of dimensionality).
 
+### Step 5a — Q-learning (`notebooks/03_q_learning.ipynb`, `src/tabular_agents.py`)
+- Update rule (Sutton & Barto eq. 6.8): Q(S, A) ← Q(S, A) + α [R + γ max_a Q(S', a) − Q(S, A)], target = R after STOP. ε-greedy exploration, ε from 1 to 0.05 over 80 % of the episodes. α = 0.5, γ = 0.99, 30,000 episodes per letter, 5 runs (seeds) per letter.
+- **Every letter is learned**: in all 50 runs, the final greedy policy draws every letter perfectly from every starting point. First perfect drawing after ~5,000 (L) to ~12,500 (H) episodes (median).
+- **Fast**: 2–4 s per run; 50 runs in about 2.5 minutes.
+- **Good but not optimal**: 93 % (H) to 100 % (L) of the optimum v*. Only L reaches the optimum in all runs. Two imperfections: *detours* (from some starts, the agent travels pen-up to the starting point it knows best: I, T, N, X) and *lifting the pen* (2 strokes for E, F, H, where the optimum uses 1 stroke and goes back over segments).
+- **Cause: exploration.** Random ε-greedy exploration rarely tries the long sequences of unrewarded "going back" moves of the optimal drawings. With 100,000 episodes on H: 97 % of v* (vs 93 %), and only ~12 % of the states visited.
+- Runs agree at the end (std ≤ 1.4 % of v*) but differ a lot during learning.
+
+---
+
+## Algorithm comparison (for the discussion)
+
+Filled in step by step with the results of our own experiments.
+
+| Algorithm | Advantages | Disadvantages | What our experiments show |
+|---|---|---|---|
+| **Value iteration** (DP, ch. 4) | Exact optimum; guaranteed convergence; very few iterations | Needs the full model p(s′, r \| s, a); must sweep **all** states, even useless ones; memory and time grow with 2^(segments) (curse of dimensionality) | Optimum for every letter in 13–23 iterations (1–2 s), but building the model takes up to 6 s and would be impossible on a 7×7 grid (~26 million states) |
+| **Q-learning** (TD, off-policy, ch. 6) | Model-free (only plays); visits only the useful states; off-policy: learns the greedy policy while exploring; fast | No guarantee of reaching the optimum in limited time; depends on exploration and parameters (α, ε, episodes); still a table: no generalisation to unseen letters | All letters drawn perfectly, but 93–100 % of v*; ~12 % of the states of H visited; 2–4 s per run |
+| **SARSA** (TD, on-policy, ch. 6) | *Expected:* learns the value of the policy it actually follows (exploration included): more cautious, smoother learning | *Expected:* optimal only if ε → 0; may be slower to reach the optimum | To do (step 5b) |
+| **Monte Carlo** (on-policy, ch. 5) | *Expected:* no bootstrapping, so unbiased estimates; simple (average of returns) | *Expected:* waits for the end of the episode; high variance; needs terminating episodes (our 50-step cut is an approximation); exploration problem | To do (step 5b) |
+| **DQN** (deep RL) | *Expected:* generalises across states and letters (unseen letters); scales to large grids | *Expected:* unstable, no convergence guarantee, many hyperparameters, slower, less interpretable | To do (step 7) |
+
 ---
 
 ## Progress
@@ -111,7 +133,8 @@ Nuance for the discussion: the reward (+1 per correct segment) is built from the
 | 2. Repository structure | Done |
 | 3. Environment (`src/environment.py`) | Done |
 | 4. Value iteration (reference optimum) | Done |
-| 5. Q-learning, SARSA, Monte Carlo + comparison | To do |
+| 5a. Q-learning | Done |
+| 5b. SARSA, Monte Carlo + comparison | To do |
 | 6. Reward experiments | To do |
 | 7. DQN + test on unseen letters | To do |
 | 8. Figures, report, slides | To do |

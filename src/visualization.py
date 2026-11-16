@@ -51,9 +51,9 @@ def draw_episode(ax, letter: Letter, history, title=None, n_steps=None):
     draw_letter(ax, letter, show_starts=False, title=title if title is not None else letter.name)
     steps = history if n_steps is None else history[:n_steps]
     moves = [info for info in history if info["event"] == "move"]
-    if moves:  # starting point of the episode
+    if moves:  # starting point of the episode: orange ring, drawn on top so it stays visible
         r, c = moves[0]["from"]
-        ax.plot(c, r, "o", ms=9, mfc=START, mec=SURFACE, mew=1.5, zorder=4)
+        ax.plot(c, r, "o", ms=13, mfc="none", mec=START, mew=2.5, zorder=6)
     pen_pos = None
     for info in steps:
         if info["event"] != "move":
@@ -78,7 +78,7 @@ def plot_episodes(panels, ncols=5, path=None, caption=None):
         draw_episode(ax, letter, history, title=title)
     for ax in axes[len(panels):]:
         ax.axis("off")
-    fig.text(0.5, 0.01, caption or "orange: start   blue: letter segment drawn   red: outside the letter   "
+    fig.text(0.5, 0.01, caption or "orange ring: start   blue: letter segment drawn   red: outside the letter   "
              "dashed: pen up   dark dot: final pen position", ha="center", fontsize=8, color=MUTED)
     fig.tight_layout(rect=(0, 0.04, 1, 1))
     if path:
