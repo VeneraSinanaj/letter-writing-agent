@@ -87,6 +87,22 @@ Nuance for the discussion: the reward (+1 per correct segment) is built from the
 
 ---
 
+## Key results so far
+
+### Step 3 — Environment (`notebooks/01_environment.ipynb`)
+- A random agent scribbles: on E it draws 3 of the 12 segments, with several segments outside the letter, and gets a total reward of about −10.6.
+- 7 hand-computed checks confirm every reward rule (e.g. drawing the whole L then STOP gives −0.3 + 7 × (−0.05) + 7 + 2 = +8.35).
+
+### Step 4 — Value iteration (`notebooks/02_value_iteration.ipynb`, `src/dynamic_programming.py`)
+- Value iteration uses the Bellman optimality equation; since the environment is deterministic, it reduces to v(s) = max_a [r(s, a) + γ v(s')]. All states are updated at once with numpy arrays (two-array version, Sutton & Barto §4.1), whereas the course notebook updates them one by one (in-place version); both converge to the same v*.
+- **Every letter is drawn completely, with no segment outside the letter, from every starting point.** The optimal returns per starting point are saved in `results/02_optimal_returns.csv` (reference for the next steps).
+- **The optimal agent never lifts the pen: every letter is drawn in a single stroke**, going back over segments already drawn (−0.05 per move) rather than starting a new stroke (−0.3). The reward defines the writing style; this will be studied in step 6.
+- **The starting point matters**: for E, starting from the middle bar costs 18 steps instead of 15.
+- **Convergence is exact and fast**: 13 to 23 iterations, more for letters with more segments. Δ stays close to 2 and then drops to exactly 0 once the number of iterations exceeds the longest optimal path (no gradual decrease, unlike Frozen Lake, because there is no randomness).
+- Building the model takes up to ~6 s for the 12-segment letters, value iteration ~1–2 s; this grows with 2^(segments) (curse of dimensionality).
+
+---
+
 ## Progress
 
 | Step | Status |
@@ -94,7 +110,7 @@ Nuance for the discussion: the reward (+1 per correct segment) is built from the
 | 1. MDP definition | Done |
 | 2. Repository structure | Done |
 | 3. Environment (`src/environment.py`) | Done |
-| 4. Value iteration (reference optimum) | To do |
+| 4. Value iteration (reference optimum) | Done |
 | 5. Q-learning, SARSA, Monte Carlo + comparison | To do |
 | 6. Reward experiments | To do |
 | 7. DQN + test on unseen letters | To do |

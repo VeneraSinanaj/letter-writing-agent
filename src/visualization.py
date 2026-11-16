@@ -50,6 +50,10 @@ def draw_episode(ax, letter: Letter, history, title=None, n_steps=None):
     """An episode on top of the letter template. history = env.history (list of info dicts)."""
     draw_letter(ax, letter, show_starts=False, title=title if title is not None else letter.name)
     steps = history if n_steps is None else history[:n_steps]
+    moves = [info for info in history if info["event"] == "move"]
+    if moves:  # starting point of the episode
+        r, c = moves[0]["from"]
+        ax.plot(c, r, "o", ms=9, mfc=START, mec=SURFACE, mew=1.5, zorder=4)
     pen_pos = None
     for info in steps:
         if info["event"] != "move":
@@ -63,6 +67,47 @@ def draw_episode(ax, letter: Letter, history, title=None, n_steps=None):
         pen_pos = info["to"]
     if pen_pos is not None:
         ax.plot(pen_pos[1], pen_pos[0], "o", ms=8, mfc=PEN, mec=SURFACE, mew=1.5, zorder=5)
+
+
+def plot_episodes(panels, ncols=5, path=None, caption=None):
+    """Several episodes side by side. panels = list of (letter, history, title)."""
+    nrows = int(np.ceil(len(panels) / ncols))
+    fig, axes = plt.subplots(nrows, ncols, figsize=(2.2 * ncols, 2.4 * nrows + 0.4), facecolor=SURFACE)
+    axes = np.atleast_1d(axes).ravel()
+    for ax, (letter, history, title) in zip(axes, panels):
+        draw_episode(ax, letter, history, title=title)
+    for ax in axes[len(panels):]:
+        ax.axis("off")
+    fig.text(0.5, 0.01, caption or "orange: start   blue: letter segment drawn   red: outside the letter   "
+             "dashed: pen up   dark dot: final pen position", ha="center", fontsize=8, color=MUTED)
+    fig.tight_layout(rect=(0, 0.04, 1, 1))
+    if path:
+        fig.savefig(path, dpi=150, facecolor=SURFACE)
+    return fig
+
+
+def animate_episodes(panels, path, ncols=5, fps=4):
+    """GIF of several episodes played step by step at the same time (panels as in plot_episodes)."""
+    from matplotlib.animation import FuncAnimation, PillowWriter
+
+    nrows = int(np.ceil(len(panels) / ncols))
+    fig, axes = plt.subplots(nrows, ncols, figsize=(2.2 * ncols, 2.4 * nrows + 0.4), facecolor=SURFACE)
+    axes = np.atleast_1d(axes).ravel()
+    for ax in axes[len(panels):]:
+        ax.axis("off")
+    n_frames = max(len(h) for _, h, _ in panels) + 1
+
+    def update(frame):
+        for ax, (letter, history, title) in zip(axes, panels):
+            ax.clear()
+            draw_episode(ax, letter, history, title=title, n_steps=min(frame, len(history)))
+        return []
+
+    fig.tight_layout()
+    hold = 2 * fps  # keep the final image for about 2 seconds
+    anim = FuncAnimation(fig, update, frames=list(range(n_frames)) + [n_frames - 1] * hold, blit=False)
+    anim.save(path, writer=PillowWriter(fps=fps))
+    plt.close(fig)
 
 
 def plot_letters(letters, ncols=5, path=None):
