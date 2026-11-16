@@ -16,6 +16,8 @@ def play_policy(env, policy, start, gamma=0.99):
         strokes          number of times the pen was put down
         drawn            segments of the letter drawn, out of env.k
         off_letter       segments drawn outside the letter (counted each time)
+        redrawn          moves going back over a segment of the letter already drawn
+        pen_up_moves     moves with the pen up
         completed        True if the agent pressed STOP with the whole letter drawn
     """
     state = env.reset(start=start)
@@ -27,13 +29,16 @@ def play_policy(env, policy, start, gamma=0.99):
         discounted += gamma**t * reward
         t += 1
 
-    strokes, off_letter, pen_was_down = 0, 0, False
+    strokes, off_letter, redrawn, pen_up_moves, pen_was_down = 0, 0, 0, 0, False
     for info in env.history:
         if info["event"] != "move":
             continue  # STOP and off-grid moves do not change the pen state
         if info["pen_down"]:
             strokes += not pen_was_down
             off_letter += info["segment"] == "off_letter"
+            redrawn += info["segment"] == "redrawn"
+        else:
+            pen_up_moves += 1
         pen_was_down = info["pen_down"]
 
     drawn = env.drawn_segments()
@@ -45,6 +50,8 @@ def play_policy(env, policy, start, gamma=0.99):
         "strokes": strokes,
         "drawn": drawn,
         "off_letter": off_letter,
+        "redrawn": redrawn,
+        "pen_up_moves": pen_up_moves,
         "completed": bool(terminated and drawn == env.k),
     }
 

@@ -117,6 +117,14 @@ Nuance for the discussion: the reward (+1 per correct segment) is built from the
 - **Monte Carlo fails on every letter (both versions): the "giving up" trap.** The agent learns to draw one to five segments and press STOP (V, X: STOP immediately). From the start, playing at random is worth about −11 on average, stopping immediately only −7 (L, −1 per missing segment). Judged by the returns of its own mostly random policy, "continue" looks worse than "stop", and the agent never gets out. Q-learning escapes thanks to the max, SARSA thanks to bootstrapping.
 - **With a stronger early-stop penalty (−3 per missing segment)**, Monte Carlo learns L, Z and V perfectly and part of the others, but still fails on X; Q-learning is unaffected (93–100 %). The reward and the algorithm interact; Monte Carlo remains much less sample-efficient (one return per episode, high variance, updates only at the end).
 
+### Step 6a — Reward and writing style (`notebooks/05_reward_style.ipynb`)
+- New reward parameter `redrawn` (penalty for going back over a segment already drawn); default 0, so steps 3–5 are unchanged.
+- **Trade-off**: at the end of a stroke, the agent lifts the pen if and only if m·|r_move| + |r_stroke| < k·(|r_move| + |r_redrawn|), where k = segments to go back over and m = pen-up moves. On a grid m = k very often, so with r_redrawn = 0 lifting the pen is never strictly better.
+- **The stroke penalty alone cannot produce a human style**: with −0.1, −0.3 or −1, every letter is drawn in one stroke, going back over 2–4 segments. With 0, lifting and going back cost the same: the strokes are decided by a tie.
+- **The going-back penalty changes the style letter by letter, as the inequality predicts**: −0.1 → only X lifts the pen; −0.2 → T, E, F, H, X lift it; −0.5 → no segment is ever gone back over (I: 3 strokes; T, E, F, X: 2; H: 3; L, N, Z, V: 1) — the strokes a person would use.
+- **Q-learning adopts the same style**: with r_redrawn = −0.5 it uses the optimal number of strokes for 9 letters out of 10, never goes back, draws every letter perfectly, 97–100 % of the new optimum (X: 4 strokes instead of 2, 90 %).
+- Discussion: the reward defines not only *what* to do but *how*; a natural behaviour appears only if the reward makes it strictly better (link with reward shaping theory, Ng, Harada & Russell, 1999).
+
 ---
 
 ## Algorithm comparison (for the discussion)
@@ -143,6 +151,7 @@ Filled in step by step with the results of our own experiments.
 | 4. Value iteration (reference optimum) | Done |
 | 5a. Q-learning | Done |
 | 5b. SARSA, Monte Carlo + comparison | Done |
-| 6. Reward experiments | To do |
+| 6a. Reward and writing style | Done |
+| 6b. Reward and learnability (early-stop penalty, sparse reward) | To do |
 | 7. DQN + test on unseen letters | To do |
 | 8. Figures, report, slides | To do |

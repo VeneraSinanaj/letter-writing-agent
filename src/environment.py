@@ -44,6 +44,7 @@ class Rewards:
     off_grid: float = -0.2      # trying to move outside the grid (the pen does not move)
     stop_complete: float = 2.0  # STOP when every segment has been drawn
     stop_missing: float = -1.0  # STOP too early: per missing segment
+    redrawn: float = 0.0        # going back over a segment already drawn (0 = no penalty, as in steps 3-5)
 
 
 class LetterWritingEnv:
@@ -109,6 +110,7 @@ class LetterWritingEnv:
                 mask |= 1 << bit
                 info["segment"] = "new"
             else:                             # already drawn: going back over it
+                reward += R.redrawn
                 info["segment"] = "redrawn"
         return self.encode(new_row, new_col, int(draw), mask), reward, False, info
 
