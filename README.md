@@ -145,6 +145,21 @@ Nuance for the discussion: the reward (+1 per correct segment) is built from the
 - **Why**: with only 10 different targets, the target bits act as a letter *identifier*; the network learns 10 separate behaviours rather than the general rule "draw the missing target segments, STOP when drawn = target". RL agents overfit to their training tasks and need many diverse tasks to generalise (Cobbe et al., 2019).
 - Possible improvements: train on thousands of random stroke figures; give the *missing* segments as input or use a convolutional network (local rule shared between positions); train on more letters.
 
+### Step 7c — Better generalisation (`notebooks/09_better_generalisation.ipynb`, `src/figures.py`)
+- Two ideas, tested in a 2 × 2 design: **diverse targets** (random stroke figures, a new one at each episode, figures identical to a letter rejected, so that *no letter is ever seen during training*) and a **rich observation** (266 numbers: + the 72 *missing* segments + a 24-bit *local view* around the pen: for each direction, is the segment missing / drawn / outside the grid). A and B: 1,000,000 steps; C: 300,000 steps. Trained networks saved in `results/09_dqn_*.pt`.
+
+| | 10 first letters | 16 other letters | STOP on the 16 others |
+|---|---|---|---|
+| Notebook 07: basic obs, trained on the 10 letters | 96 % | 0 % | 0 % |
+| A: basic obs, random figures | 0 % | 0 % | 0 % |
+| C: rich obs, trained on the 10 letters | 100 % | 0 % | 0 % |
+| **B: rich obs, random figures (2 seeds)** | **94 %** | **92 %** | **92 %** |
+
+- **Only B generalises**: it draws 92–94 % of the letters perfectly although it has never seen any of them (90–92 % of held-out random figures). Both seeds agree.
+- **Diversity alone is not enough** (A learns nothing, even on random figures: the general rule is too hard to discover from the basic observation once memorising is impossible); **a good observation alone is not enough** (C memorises its 10 letters again). Generalisation needs both: diversity *forces* the general rule, the representation makes it *learnable* (Cobbe et al., 2019).
+- **Remaining failures** (11 of 140 episodes): always at junctions in the middle of a stroke (J, K, T, H, I, W, Q): after one stroke, the next one starts far from the pen, the local view shows nothing missing, and the agent wanders until the 50-step limit.
+- Cost: ~20–35 min per B run. Discussion: choosing the state representation is part of the agent's design, like the reward; it gives no information about the solution, yet it takes the same algorithm from 0 % to 92 % on unseen letters.
+
 ---
 
 ## Algorithm comparison (for the discussion)
@@ -157,7 +172,7 @@ Filled in step by step with the results of our own experiments.
 | **Q-learning** (TD, off-policy, ch. 6) | Model-free (only plays); visits only the useful states; off-policy: learns the greedy policy while exploring; the max values the best continuation, which protects it from the "giving up" trap; fast | No guarantee of reaching the optimum in limited time; depends on exploration and parameters (α, ε, episodes); still a table: no generalisation to unseen letters | All letters drawn perfectly, 93–100 % of v*; fastest learner (first perfect drawing after 5,000–12,500 episodes); ~12 % of the states of H visited; 2–4 s per run |
 | **SARSA** (TD, on-policy, ch. 6) | Learns the value of the policy it actually follows (exploration included); bootstrapping lets it escape the "giving up" trap | Target depends on the (sometimes random) next action: noisier, needs a smaller α; optimal only if ε → 0; slower | Same final quality as Q-learning (84–100 % of v*) but ≈1.5× more episodes and unstable curves; with α = 0.5 it degrades. Expected "caution" not observed: our environment has no costly "cliff" |
 | **Monte Carlo** (on-policy, ch. 5) | No bootstrapping, so unbiased estimates of the returns of the current policy; simplest idea (average of returns) | Waits for the end of the episode; high variance; needs terminating episodes (our 50-step cut is an approximation); judges actions by the returns of its current, mostly random, policy | Fails on every letter (both versions): learns to draw a few segments and STOP ("giving up" trap). With a stronger early-stop penalty it learns 3 letters perfectly, still far behind Q-learning |
-| **DQN** (deep RL) | One network for all letters; generalises between similar states and letters (values for states never visited); experience replay reuses each transition; scales to large state spaces | Unstable (deadly triad), no convergence guarantee; many hyperparameters; more computation per step; harder to interpret | 10 letters with one network, 87–100 % of v*; ~1,200 episodes per letter (vs 5,000–12,500 for Q-learning); 99–100 % on letters where Q-learning stays at 93–97 %; but strong oscillations even at the end (1 run out of 3 not perfect at the end); 4–5.5 min per run. **Unseen letters: no generalisation** (0 % perfect, ≤ 33 % of the segments, never STOP): with 10 training targets it memorises 10 behaviours instead of a general rule |
+| **DQN** (deep RL) | One network for all letters; generalises between similar states and letters (values for states never visited); experience replay reuses each transition; scales to large state spaces | Unstable (deadly triad), no convergence guarantee; many hyperparameters; more computation per step; harder to interpret | 10 letters with one network, 87–100 % of v*; ~1,200 episodes per letter (vs 5,000–12,500 for Q-learning); 99–100 % on letters where Q-learning stays at 93–97 %; but strong oscillations even at the end (1 run out of 3 not perfect at the end); 4–5.5 min per run. **Unseen letters: no generalisation** (0 % perfect, ≤ 33 % of the segments, never STOP): with 10 training targets it memorises 10 behaviours instead of a general rule. **With random training figures + a rich observation (step 7c): 92 % of the unseen letters drawn perfectly**; either ingredient alone gives 0 % |
 
 ---
 
@@ -175,4 +190,5 @@ Filled in step by step with the results of our own experiments.
 | 6b. Reward and learnability (early-stop penalty, delayed reward) | Done |
 | 7a. DQN on the 10 letters | Done |
 | 7b. DQN on unseen letters (generalisation) | Done |
+| 7c. Better generalisation (random figures + rich observation) | Done |
 | 8. Figures, report, slides | To do |
