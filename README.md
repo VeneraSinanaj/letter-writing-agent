@@ -138,6 +138,13 @@ Nuance for the discussion: the reward (+1 per correct segment) is built from the
 - **Closer to the optimum on several letters** (I, T, E, H: 99–100 % vs 93–97 % for Q-learning): states never visited get values from similar visited states.
 - **Slower per step** (4–5.5 min per run vs ~35 s for the 10 Q-learning tables) and **unstable**: the fraction of perfect drawings oscillates strongly even at the end (seed 1: 90 → 71 → 51 → 90 → 43 → 87 % over the last 50,000 steps) — the "deadly triad" (function approximation + bootstrapping + off-policy, Sutton & Barto §11.3). Possible improvements: smaller learning rate at the end, Double DQN, keeping the best network, longer training.
 
+### Step 7b — Generalisation to unseen letters (`notebooks/08_generalisation.ipynb`)
+- The 16 other letters (A, B, C, D, G, J, K, M, O, P, Q, R, S, U, W, Y) are defined in `src/letters.py` (curves approximated on the grid; 6 to 14 segments). The 3 trained networks are tested **without any new training**.
+- **No generalisation**: 0 % perfect drawings, 0–33 % of the segments drawn, and the agent **never presses STOP** (all episodes reach the 50-step limit) — vs 96 % perfect, 99 % coverage and 96 % STOP on the training letters. A random agent draws 5–8 % of the segments: the DQN does better on D, K, P, U (~30 %) but worse on G, Q, Y (0 %).
+- **It replays memorised routines**: for D or K it draws the vertical stem from the top-left corner as for L, E, F, then gets lost or draws outside (A, O, P, U: 8–13 segments outside on average). Similarity to the closest training letter helps only weakly (correlation 0.30; W ≈ N with Jaccard 0.71, yet only 6 % drawn).
+- **Why**: with only 10 different targets, the target bits act as a letter *identifier*; the network learns 10 separate behaviours rather than the general rule "draw the missing target segments, STOP when drawn = target". RL agents overfit to their training tasks and need many diverse tasks to generalise (Cobbe et al., 2019).
+- Possible improvements: train on thousands of random stroke figures; give the *missing* segments as input or use a convolutional network (local rule shared between positions); train on more letters.
+
 ---
 
 ## Algorithm comparison (for the discussion)
@@ -150,7 +157,7 @@ Filled in step by step with the results of our own experiments.
 | **Q-learning** (TD, off-policy, ch. 6) | Model-free (only plays); visits only the useful states; off-policy: learns the greedy policy while exploring; the max values the best continuation, which protects it from the "giving up" trap; fast | No guarantee of reaching the optimum in limited time; depends on exploration and parameters (α, ε, episodes); still a table: no generalisation to unseen letters | All letters drawn perfectly, 93–100 % of v*; fastest learner (first perfect drawing after 5,000–12,500 episodes); ~12 % of the states of H visited; 2–4 s per run |
 | **SARSA** (TD, on-policy, ch. 6) | Learns the value of the policy it actually follows (exploration included); bootstrapping lets it escape the "giving up" trap | Target depends on the (sometimes random) next action: noisier, needs a smaller α; optimal only if ε → 0; slower | Same final quality as Q-learning (84–100 % of v*) but ≈1.5× more episodes and unstable curves; with α = 0.5 it degrades. Expected "caution" not observed: our environment has no costly "cliff" |
 | **Monte Carlo** (on-policy, ch. 5) | No bootstrapping, so unbiased estimates of the returns of the current policy; simplest idea (average of returns) | Waits for the end of the episode; high variance; needs terminating episodes (our 50-step cut is an approximation); judges actions by the returns of its current, mostly random, policy | Fails on every letter (both versions): learns to draw a few segments and STOP ("giving up" trap). With a stronger early-stop penalty it learns 3 letters perfectly, still far behind Q-learning |
-| **DQN** (deep RL) | One network for all letters; generalises between similar states and letters (values for states never visited); experience replay reuses each transition; scales to large state spaces | Unstable (deadly triad), no convergence guarantee; many hyperparameters; more computation per step; harder to interpret | 10 letters with one network, 87–100 % of v*; ~1,200 episodes per letter (vs 5,000–12,500 for Q-learning); 99–100 % on letters where Q-learning stays at 93–97 %; but strong oscillations even at the end (1 run out of 3 not perfect at the end); 4–5.5 min per run. Unseen letters: to do (step 7b) |
+| **DQN** (deep RL) | One network for all letters; generalises between similar states and letters (values for states never visited); experience replay reuses each transition; scales to large state spaces | Unstable (deadly triad), no convergence guarantee; many hyperparameters; more computation per step; harder to interpret | 10 letters with one network, 87–100 % of v*; ~1,200 episodes per letter (vs 5,000–12,500 for Q-learning); 99–100 % on letters where Q-learning stays at 93–97 %; but strong oscillations even at the end (1 run out of 3 not perfect at the end); 4–5.5 min per run. **Unseen letters: no generalisation** (0 % perfect, ≤ 33 % of the segments, never STOP): with 10 training targets it memorises 10 behaviours instead of a general rule |
 
 ---
 
@@ -167,5 +174,5 @@ Filled in step by step with the results of our own experiments.
 | 6a. Reward and writing style | Done |
 | 6b. Reward and learnability (early-stop penalty, delayed reward) | Done |
 | 7a. DQN on the 10 letters | Done |
-| 7b. DQN on unseen letters (generalisation) | To do |
+| 7b. DQN on unseen letters (generalisation) | Done |
 | 8. Figures, report, slides | To do |

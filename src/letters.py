@@ -46,7 +46,51 @@ START_POINTS: dict[str, list[Cell]] = {
     "X": [(0, 0), (0, 4), (4, 0), (4, 4)],
 }
 
-TRAINING_LETTERS = list(LETTER_STROKES)  # the 10 letters of the tabular part
+TRAINING_LETTERS = list(LETTER_STROKES)  # the 10 letters of the tabular part and of the DQN training
+
+# The 16 other letters, never seen during training: used to test whether the DQN generalises (step 7b).
+# Curves (C, O, S, G...) are approximated by straight and diagonal strokes on the grid.
+TEST_LETTER_STROKES: dict[str, list[list[Cell]]] = {
+    "A": [[(4, 0), (2, 0), (0, 2), (2, 4), (4, 4)], [(2, 0), (2, 4)]],
+    "B": [[(0, 0), (4, 0)], [(0, 0), (0, 2), (1, 3), (2, 2), (2, 0)], [(2, 2), (3, 3), (4, 2), (4, 0)]],
+    "C": [[(0, 3), (0, 1), (1, 0), (3, 0), (4, 1), (4, 3)]],
+    "D": [[(0, 0), (4, 0)], [(0, 0), (0, 2), (2, 4), (4, 2), (4, 0)]],
+    "G": [[(0, 3), (0, 1), (1, 0), (3, 0), (4, 1), (4, 3), (3, 4), (2, 4), (2, 2)]],
+    "J": [[(0, 1), (0, 4)], [(0, 3), (3, 3), (4, 2), (4, 1), (3, 0)]],
+    "K": [[(0, 0), (4, 0)], [(0, 3), (2, 1), (4, 3)], [(2, 0), (2, 1)]],
+    "M": [[(4, 0), (0, 0), (2, 2), (0, 4), (4, 4)]],
+    "O": [[(0, 1), (0, 3), (1, 4), (3, 4), (4, 3), (4, 1), (3, 0), (1, 0), (0, 1)]],
+    "P": [[(0, 0), (4, 0)], [(0, 0), (0, 2), (1, 3), (2, 2), (2, 0)]],
+    "Q": [[(0, 1), (0, 3), (1, 4), (3, 4), (4, 3), (4, 1), (3, 0), (1, 0), (0, 1)], [(2, 2), (4, 4)]],
+    "R": [[(0, 0), (4, 0)], [(0, 0), (0, 2), (1, 3), (2, 2), (2, 0)], [(2, 2), (4, 4)]],
+    "S": [[(0, 4), (0, 1), (1, 0), (2, 1), (2, 3), (3, 4), (4, 3), (4, 0)]],
+    "U": [[(0, 0), (3, 0), (4, 1), (4, 3), (3, 4), (0, 4)]],
+    "W": [[(0, 0), (4, 0), (2, 2), (4, 4), (0, 4)]],
+    "Y": [[(0, 0), (2, 2), (0, 4)], [(2, 2), (4, 2)]],
+}
+
+TEST_START_POINTS: dict[str, list[Cell]] = {
+    "A": [(4, 0), (4, 4)],
+    "B": [(0, 0), (4, 0)],
+    "C": [(0, 3), (4, 3)],
+    "D": [(0, 0), (4, 0)],
+    "G": [(0, 3), (2, 2)],
+    "J": [(0, 1), (0, 4), (3, 0)],
+    "K": [(0, 0), (4, 0), (0, 3), (4, 3)],
+    "M": [(4, 0), (4, 4)],
+    "O": [(0, 2), (4, 2)],          # no stroke end: top or bottom of the loop
+    "P": [(0, 0), (4, 0)],
+    "Q": [(0, 2), (4, 4)],
+    "R": [(0, 0), (4, 0), (4, 4)],
+    "S": [(0, 4), (4, 0)],
+    "U": [(0, 0), (0, 4)],
+    "W": [(0, 0), (0, 4)],
+    "Y": [(0, 0), (0, 4), (4, 2)],
+}
+
+TEST_LETTERS = list(TEST_LETTER_STROKES)
+ALL_LETTER_STROKES = {**LETTER_STROKES, **TEST_LETTER_STROKES}
+ALL_START_POINTS = {**START_POINTS, **TEST_START_POINTS}
 
 
 def normalize(a: Cell, b: Cell) -> Segment:
@@ -83,11 +127,12 @@ class Letter:
 
 def make_letter(name: str) -> Letter:
     segments = []
-    for stroke in LETTER_STROKES[name]:
+    for stroke in ALL_LETTER_STROKES[name]:
         for seg in polyline_to_segments(stroke):
             if seg not in segments:
                 segments.append(seg)
-    for r, c in START_POINTS[name]:
-        if not (0 <= r < GRID_SIZE and 0 <= c < GRID_SIZE):
-            raise ValueError(f"start point {(r, c)} of {name} is outside the grid")
-    return Letter(name, tuple(segments), tuple(START_POINTS[name]))
+    cells = {cell for seg in segments for cell in seg}
+    for start in ALL_START_POINTS[name]:
+        if start not in cells:
+            raise ValueError(f"start point {start} of {name} is not on the letter")
+    return Letter(name, tuple(segments), tuple(ALL_START_POINTS[name]))
