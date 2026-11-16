@@ -125,6 +125,12 @@ Nuance for the discussion: the reward (+1 per correct segment) is built from the
 - **Q-learning adopts the same style**: with r_redrawn = −0.5 it uses the optimal number of strokes for 9 letters out of 10, never goes back, draws every letter perfectly, 97–100 % of the new optimum (X: 4 strokes instead of 2, 90 %).
 - Discussion: the reward defines not only *what* to do but *how*; a natural behaviour appears only if the reward makes it strictly better (link with reward shaping theory, Ng, Harada & Russell, 1999).
 
+### Step 6b — Reward and learnability (`notebooks/06_reward_learnability.ipynb`)
+- **Early-stop penalty** (−1, −2, −3, −5 per missing segment; L, T, E, X; Monte Carlo 3 runs, Q-learning 1 run): a stronger penalty lets Monte Carlo learn, letter by letter: L perfect from −2, T only at −5 (78 % perfect drawings), X only at −5 (50 %), E partial (22 %) whatever the penalty. Q-learning is unaffected (96–100 % of v*, 100 % perfect for every penalty).
+- **Simple prediction** ("STOP immediately" vs "play at random", estimated by simulation): right trend, not the exact threshold. Important correction: random play also ends with a random STOP that pays the same penalty, so a stronger penalty makes both options worse. Where "ok" is predicted, Monte Carlo always starts to learn; where "trap" is predicted it mostly fails, but L is learned at −2 and −3 anyway (the prediction only looks at the very beginning, when the agent is fully random).
+- **Delayed reward** (no +1 per segment, signal only at STOP): Q-learning still learns 8 letters out of 10 perfectly (3 runs each), but 2–3× more slowly (first perfect drawing after 13,000–27,000 episodes vs 5,000–12,500), and fails on E and H, the letters with the longest optimal drawings (15 and 17 steps). Perfect drawings appear only once ε is small: with strong exploration the agent almost never completes the letter, so it almost never sees the final reward. SARSA learns only L (V in some runs), Monte Carlo nothing.
+- Discussion: reward shaping (+1 per segment) does not change the length of the optimal drawings, but makes them much easier to discover; a badly chosen penalty can create a trap that some algorithms (Monte Carlo) cannot escape while others (Q-learning) are robust.
+
 ---
 
 ## Algorithm comparison (for the discussion)
@@ -152,6 +158,6 @@ Filled in step by step with the results of our own experiments.
 | 5a. Q-learning | Done |
 | 5b. SARSA, Monte Carlo + comparison | Done |
 | 6a. Reward and writing style | Done |
-| 6b. Reward and learnability (early-stop penalty, sparse reward) | To do |
+| 6b. Reward and learnability (early-stop penalty, delayed reward) | Done |
 | 7. DQN + test on unseen letters | To do |
 | 8. Figures, report, slides | To do |
