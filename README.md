@@ -6,13 +6,22 @@ An agent learns, by trial and error, to draw letters on a 5×5 grid.
 We compare several methods from the course: dynamic programming (value iteration),
 Q-learning, SARSA, Monte Carlo, and finally a DQN able to draw letters it has never seen.
 
+**Contents:** [Repository structure](#repository-structure) · [Installation](#installation) · [How to reproduce](#how-to-reproduce) · [Project choices (MDP)](#project-choices-mdp-definition) · [Key results](#key-results-so-far) · [Algorithm comparison](#algorithm-comparison-for-the-discussion) · [Progress](#progress) · [Report outline](#report-outline) · [References](#references)
+
 ## Repository structure
 
-| Folder | Content |
+| Folder / file | Content |
 |---|---|
-| `src/` | Reusable code (`.py`): the environment, the algorithms, the visualisation functions |
-| `notebooks/` | The experiments (`.ipynb`): each notebook uses the code in `src/` and discusses the results |
-| `results/` | Figures, animations and tables produced by the notebooks |
+| `src/letters.py` | The 26 letters: strokes on the grid and natural starting points (10 training letters + 16 test letters) |
+| `src/environment.py` | The MDP: `LetterWritingEnv` (`reset`, `step`, `transition`, `build_model`) and the `Rewards` |
+| `src/dynamic_programming.py` | Value iteration |
+| `src/tabular_agents.py` | Q-learning, SARSA, Monte Carlo (sample average or constant step), ε-greedy exploration |
+| `src/dqn.py` | Deep Q-Network: observation (basic 170 / rich 266), network, replay memory, training, evaluation |
+| `src/figures.py` | Random stroke figures used to train the generalising DQN |
+| `src/evaluation.py` | Playing a policy and measuring it (return, steps, strokes, errors, completion) |
+| `src/visualization.py` | Drawing letters and episodes, animations |
+| `notebooks/` | The experiments, numbered in the order of the project (see [How to reproduce](#how-to-reproduce)) |
+| `results/` | Figures, animations, tables and trained networks produced by the notebooks |
 
 ## Installation
 
@@ -22,6 +31,26 @@ python -m venv ../.venv
 ```
 
 The virtual environment is created **next to** the repository (`../.venv`), not inside it, so that it is not pushed to GitHub.
+In VS Code or Jupyter, select this environment as the kernel (`.venv`): PyTorch is installed there, not in a global Python.
+
+## How to reproduce
+
+Run the notebooks in this order (Run All). Times measured on a laptop CPU (no GPU); they may vary.
+
+| Notebook | Step | What it does | Needs | Time |
+|---|---|---|---|---|
+| `01_environment` | 3 | Letters, random agent, 7 checks of the reward rules, full model | — | < 1 min |
+| `02_value_iteration` | 4 | Optimal drawings (value iteration), convergence; saves `02_optimal_returns.csv` | — | ~1 min |
+| `03_q_learning` | 5a | Q-learning, 10 letters × 5 seeds; saves `03_q_learning_summary.csv` and `03_q_learning_curves.npz` | 02 | ~3 min |
+| `04_sarsa_monte_carlo` | 5b | SARSA, Monte Carlo (2 versions), comparison with Q-learning, "giving up" trap | 02, 03 | ~11 min |
+| `05_reward_style` | 6a | Stroke and going-back penalties: writing style | — | ~2.5 min |
+| `06_reward_learnability` | 6b | Early-stop penalty, delayed reward | 03, 04 | ~6 min |
+| `07_dqn` | 7a | DQN on the 10 letters, 3 seeds; saves the networks `07_dqn_seed*.pt` | 02, 03 | 15–25 min (seconds if the networks are already in `results/`) |
+| `08_generalisation` | 7b | The 16 unseen letters: test of the networks of 07 | 07 | ~1 min |
+| `09_better_generalisation` | 7c | Random figures + rich observation (2 × 2 design) | 07 | ~1.5 min with the saved networks (~1.5 h with `RETRAIN = True`) |
+
+Random seeds are fixed: the tabular results are exactly reproducible; PyTorch on CPU is not always bit-for-bit
+reproducible, so DQN numbers can differ slightly after retraining.
 
 ---
 
@@ -191,4 +220,151 @@ Filled in step by step with the results of our own experiments.
 | 7a. DQN on the 10 letters | Done |
 | 7b. DQN on unseen letters (generalisation) | Done |
 | 7c. Better generalisation (random figures + rich observation) | Done |
-| 8. Figures, report, slides | To do |
+| 8a. README as a report dossier (reproduction, outline, references) | Done |
+| 8b. Final report figures (`notebooks/10_report_figures.ipynb`) | To do |
+| 8c. Presentation (20 January 2027) | To do |
+
+---
+
+## Report outline
+
+Guideline: PDF of **12–15 pages maximum for a group of 3** (excluding references and appendix), 10–12 pt, structure
+Introduction / Methodology / Results / Discussion / Conclusion, **at least 8 references, all cited in the text**
+(APA or Chicago), sources of inspiration cited in the introduction. Deadline: **10 January 2027, 23:59**
+(PDF + code to npromwang@unistra.fr); presentation on 20 January 2027.
+
+Suggested page budget (≈ 14 pages, leaving a margin). Figures marked `results/…` already exist; step 8b will
+produce cleaner versions of the main ones in `figures/`.
+
+### 1. Introduction (≈ 1.5 pages)
+- The problem: an agent that learns to draw letters stroke by stroke, by trial and error.
+- Why it is a reinforcement learning problem and not supervised learning: nobody shows the agent how to draw (no
+  stroke order, no starting point, no correct move); it only receives states and rewards (section "Do we give
+  data to the agent?" above).
+- Inspiration and related work: SPIRAL (Ganin et al., 2018), Learning to Paint (Huang et al., 2019), stroke-based
+  handwriting (Lake et al., 2015).
+- Contributions (one sentence each): an MDP for letter writing; a comparison of DP, Q-learning, SARSA, Monte Carlo
+  and DQN against the exact optimum; experiments showing how the reward shapes the writing style and the ability
+  to learn; a DQN that draws 92 % of unseen letters thanks to diverse training targets and a suitable observation.
+
+### 2. Methodology (≈ 4 pages)
+- **2.1 The MDP** (≈ 1.25 p): grid, letters as sets of segments, state (position, pen, drawn mask), 17 actions,
+  deterministic transitions, reward table, γ = 0.99, 50-step limit, natural starting points. Justifications:
+  segments rather than cells, the stroke / move ratio, why 5×5 (state count 2^segments), off-letter segments not
+  stored in the state. *Figure:* `results/01_letters.png`.
+- **2.2 Algorithms** (≈ 2 p): value iteration (Bellman optimality equation, deterministic simplification,
+  two-array version); Q-learning (eq. 6.8), SARSA (eq. 6.7), first-visit Monte Carlo (sample average vs constant
+  step); ε-greedy schedule; DQN (target, Huber loss, experience replay, target network, the 170-number
+  observation); step 7c: random figures and the rich 266-number observation. Pseudo-codes can go in the appendix.
+- **2.3 Experimental setup** (≈ 0.75 p): hyperparameter table, number of episodes / steps, seeds, evaluation
+  protocol (greedy policy from every starting point; % of the optimum v*; "perfect drawing" = complete, no
+  segment outside, STOP), hardware (laptop CPU) and computation times.
+
+### 3. Results (≈ 5.5 pages)
+- **3.1 The optimum** (≈ 0.5 p): every letter drawn perfectly in one stroke; exact convergence in 13–23
+  iterations. *Figures:* `results/02_optimal_drawings.png`, `results/02_convergence.png`.
+- **3.2 Tabular methods** (≈ 1.5 p): Q-learning learns every letter (93–100 % of v*), SARSA as good but 1.5×
+  slower and unstable, Monte Carlo falls into the "giving up" trap. *Figures:* `results/03_learning_curves.png`,
+  `results/04_learning_curves.png`, `results/04_final_drawings_mc.png`; summary table from
+  `results/04_comparison_summary.csv`.
+- **3.3 Reward experiments** (≈ 1.25 p): the going-back penalty produces a human-like style; the early-stop
+  penalty and the delayed reward decide which algorithms can learn. *Figures:* `results/05_style_drawings.png`,
+  `results/06_early_stop_penalty.png`, `results/06_delayed_reward.png`.
+- **3.4 DQN on the 10 letters** (≈ 0.75 p): one network, ~1,200 episodes per letter, closer to the optimum than
+  the tables, but unstable. *Figure:* `results/07_dqn_learning.png`.
+- **3.5 Generalisation** (≈ 1.5 p): 0 % on unseen letters (notebook 08), then the 2 × 2 design: only random
+  figures + rich observation generalise (92 %). *Figures:* `results/08_test_drawings.png`, the 2 × 2 table,
+  `results/09_learning_curves.png`, `results/09_B_all_letters.png`.
+
+### 4. Discussion (≈ 2.5 pages)
+- The algorithm comparison table above: advantages, disadvantages, and what our experiments showed.
+- What worked, what did not, and why ("discoveries"): the Monte Carlo trap; SARSA's expected caution not observed
+  (no "cliff" in our environment); reward shaping speeds up learning without changing the length of the optimal
+  drawings; the reward defines the style; DQN instability (deadly triad); generalisation needs diversity *and*
+  representation.
+- Limitations: 5×5 grid and approximated curves; hand-chosen starting points and letter shapes; one seed for some
+  experiments; CPU budget; truncated episodes for Monte Carlo; the rich observation is hand-designed.
+- Possible improvements: Double DQN, convolutional network, larger grids, curriculum learning, policy-gradient
+  methods, comparison with human stroke orders.
+
+### 5. Conclusion (≈ 0.5 page)
+
+### References (not counted) and appendix (not counted)
+- Appendix ideas: pseudo-codes, per-letter tables, the 16 test letters, extra drawings.
+- **Statement on the use of AI** (the guideline allows AI for code and brainstorming): say that the code was
+  written with the help of an AI assistant, then checked, run and explained by the group.
+
+---
+
+## References
+
+APA style. ⚠️ Compiled from memory: **check every entry** (authors, year, title, pages) before putting it in the
+report; entries marked *(to verify)* are the least certain. Every reference must be cited in the text.
+
+**Textbook**
+- Sutton, R. S., & Barto, A. G. (2018). *Reinforcement learning: An introduction* (2nd ed.). MIT Press. — the
+  course textbook; equations 6.7 (SARSA) and 6.8 (Q-learning), §4.1 (value iteration), §5.4 (Monte Carlo control),
+  §11.3 (deadly triad), Example 6.6 (cliff walking).
+
+**Dynamic programming**
+- Bellman, R. (1957). *Dynamic programming*. Princeton University Press.
+- Howard, R. A. (1960). *Dynamic programming and Markov processes*. MIT Press.
+- Puterman, M. L. (1994). *Markov decision processes: Discrete stochastic dynamic programming*. Wiley.
+
+**Monte Carlo**
+- Metropolis, N., & Ulam, S. (1949). The Monte Carlo method. *Journal of the American Statistical Association,
+  44*(247), 335–341.
+- Singh, S. P., & Sutton, R. S. (1996). Reinforcement learning with replacing eligibility traces. *Machine Learning,
+  22*, 123–158. *(to verify)* — first-visit vs every-visit Monte Carlo.
+- Silver, D., et al. (2017). Mastering the game of Go without human knowledge. *Nature, 550*(7676), 354–359. — cited
+  in the course (MCTS).
+
+**Temporal-difference learning**
+- Sutton, R. S. (1988). Learning to predict by the methods of temporal differences. *Machine Learning, 3*(1), 9–44.
+- Watkins, C. J. C. H., & Dayan, P. (1992). Q-learning. *Machine Learning, 8*(3–4), 279–292.
+- Rummery, G. A., & Niranjan, M. (1994). *On-line Q-learning using connectionist systems* (Technical Report
+  CUED/F-INFENG/TR 166). University of Cambridge. — origin of SARSA.
+
+**Reward shaping**
+- Ng, A. Y., Harada, D., & Russell, S. (1999). Policy invariance under reward transformations: Theory and
+  application to reward shaping. In *Proceedings of the 16th International Conference on Machine Learning (ICML)*.
+
+**Deep reinforcement learning and generalisation**
+- Lin, L.-J. (1992). Self-improving reactive agents based on reinforcement learning, planning and teaching.
+  *Machine Learning, 8*, 293–321. — experience replay. *(to verify)*
+- Mnih, V., et al. (2015). Human-level control through deep reinforcement learning. *Nature, 518*(7540), 529–533. — DQN.
+- van Hasselt, H., Guez, A., & Silver, D. (2016). Deep reinforcement learning with double Q-learning. In
+  *Proceedings of the AAAI Conference on Artificial Intelligence*. — suggested improvement (Double DQN).
+- Schaul, T., Horgan, D., Gregor, K., & Silver, D. (2015). Universal value function approximators. In *Proceedings
+  of the 32nd International Conference on Machine Learning (ICML)*. — a network that receives the goal as input.
+- Cobbe, K., Klimov, O., Hesse, C., Kim, T., & Schulman, J. (2019). Quantifying generalization in reinforcement
+  learning. In *Proceedings of the 36th International Conference on Machine Learning (ICML)*. — diverse training
+  tasks are needed to generalise.
+- Kingma, D. P., & Ba, J. (2015). Adam: A method for stochastic optimization. In *International Conference on
+  Learning Representations (ICLR)*. — the optimiser of the DQN.
+
+**Inspiration (cite in the introduction)**
+- Ganin, Y., Kulkarni, T., Babuschkin, I., Eslami, S. M. A., & Vinyals, O. (2018). Synthesizing programs for images
+  using reinforced adversarial learning. In *Proceedings of the 35th International Conference on Machine Learning
+  (ICML)*. — SPIRAL, an RL agent that draws.
+- Huang, Z., Heng, W., & Zhou, S. (2019). Learning to paint with model-based deep reinforcement learning. In
+  *Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)*.
+- Lake, B. M., Salakhutdinov, R., & Tenenbaum, J. B. (2015). Human-level concept learning through probabilistic
+  program induction. *Science, 350*(6266), 1332–1338. — characters drawn stroke by stroke (Omniglot).
+- Zhou, T., et al. (2018). Learning to sketch with deep Q networks and demonstrated strokes. *arXiv:1810.05977*.
+  *(to verify)*
+
+**Software**
+- Harris, C. R., et al. (2020). Array programming with NumPy. *Nature, 585*, 357–362.
+- Hunter, J. D. (2007). Matplotlib: A 2D graphics environment. *Computing in Science & Engineering, 9*(3), 90–95.
+- Kluyver, T., et al. (2016). Jupyter Notebooks – a publishing format for reproducible computational workflows. In
+  *Positioning and Power in Academic Publishing* (pp. 87–90). IOS Press.
+- Paszke, A., et al. (2019). PyTorch: An imperative style, high-performance deep learning library. In *Advances in
+  Neural Information Processing Systems 32 (NeurIPS)*.
+- Towers, M., et al. (2024). Gymnasium: A standard interface for reinforcement learning environments.
+  *arXiv:2407.17032*. — our `reset()` / `step()` interface follows it.
+
+**Course and online resources**
+- Mayer, N. (2026). *Reinforcement learning* [Lecture slides, chapters 1–5]. Université de Strasbourg.
+- Weng, L. (2018). *A (long) peek into reinforcement learning*. Lil'Log. *(check the URL)*
+- Achiam, J. (2018). *Spinning Up in deep RL*. OpenAI. *(check the URL)*
