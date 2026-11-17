@@ -22,6 +22,8 @@ Q-learning, SARSA, Monte Carlo, and finally a DQN able to draw letters it has ne
 | `src/visualization.py` | Drawing letters and episodes, animations |
 | `notebooks/` | The experiments, numbered in the order of the project (see [How to reproduce](#how-to-reproduce)) |
 | `results/` | Figures, animations, tables and trained networks produced by the notebooks |
+| `figures/` | The final figures of the report, `fig01` to `fig14` (produced by notebook 10, report style) |
+| `src/report_style.py` | The style of the report figures: dark muted colours, Times font, no titles inside the figures |
 
 ## Installation
 
@@ -48,6 +50,7 @@ Run the notebooks in this order (Run All). Times measured on a laptop CPU (no GP
 | `07_dqn` | 7a | DQN on the 10 letters, 3 seeds; saves the networks `07_dqn_seed*.pt` | 02, 03 | 15–25 min (seconds if the networks are already in `results/`) |
 | `08_generalisation` | 7b | The 16 unseen letters: test of the networks of 07 | 07 | ~1 min |
 | `09_better_generalisation` | 7c | Random figures + rich observation (2 × 2 design) | 07 | ~1.5 min with the saved networks (~1.5 h with `RETRAIN = True`) |
+| `10_report_figures` | 8b | The 14 final figures of the report in `figures/`, in the report style (recomputes a few curves, no network training) | 02–09 | ~7 min |
 
 Random seeds are fixed: the tabular results are exactly reproducible; PyTorch on CPU is not always bit-for-bit
 reproducible, so DQN numbers can differ slightly after retraining.
@@ -221,7 +224,7 @@ Filled in step by step with the results of our own experiments.
 | 7b. DQN on unseen letters (generalisation) | Done |
 | 7c. Better generalisation (random figures + rich observation) | Done |
 | 8a. README as a report dossier (reproduction, outline, references) | Done |
-| 8b. Final report figures (`notebooks/10_report_figures.ipynb`) | To do |
+| 8b. Final report figures (`notebooks/10_report_figures.ipynb`) | Done |
 | 8c. Presentation (20 January 2027) | To do |
 
 ---
@@ -233,8 +236,8 @@ Introduction / Methodology / Results / Discussion / Conclusion, **at least 8 ref
 (APA or Chicago), sources of inspiration cited in the introduction. Deadline: **10 January 2027, 23:59**
 (PDF + code to npromwang@unistra.fr); presentation on 20 January 2027.
 
-Suggested page budget (≈ 14 pages, leaving a margin). Figures marked `results/…` already exist; step 8b will
-produce cleaner versions of the main ones in `figures/`.
+Suggested page budget (≈ 14 pages, leaving a margin). The final figures are in `figures/` (notebook 10);
+the GIF animations in `results/` are for the presentation.
 
 ### 1. Introduction (≈ 1.5 pages)
 - The problem: an agent that learns to draw letters stroke by stroke, by trial and error.
@@ -251,7 +254,7 @@ produce cleaner versions of the main ones in `figures/`.
 - **2.1 The MDP** (≈ 1.25 p): grid, letters as sets of segments, state (position, pen, drawn mask), 17 actions,
   deterministic transitions, reward table, γ = 0.99, 50-step limit, natural starting points. Justifications:
   segments rather than cells, the stroke / move ratio, why 5×5 (state count 2^segments), off-letter segments not
-  stored in the state. *Figure:* `results/01_letters.png`.
+  stored in the state. *Figure:* `fig01_letters.png` (the 26 letters).
 - **2.2 Algorithms** (≈ 2 p): value iteration (Bellman optimality equation, deterministic simplification,
   two-array version); Q-learning (eq. 6.8), SARSA (eq. 6.7), first-visit Monte Carlo (sample average vs constant
   step); ε-greedy schedule; DQN (target, Huber loss, experience replay, target network, the 170-number
@@ -262,19 +265,19 @@ produce cleaner versions of the main ones in `figures/`.
 
 ### 3. Results (≈ 5.5 pages)
 - **3.1 The optimum** (≈ 0.5 p): every letter drawn perfectly in one stroke; exact convergence in 13–23
-  iterations. *Figures:* `results/02_optimal_drawings.png`, `results/02_convergence.png`.
+  iterations. *Figures:* `fig02_optimal_drawings.png`, `fig03_convergence.png`.
 - **3.2 Tabular methods** (≈ 1.5 p): Q-learning learns every letter (93–100 % of v*), SARSA as good but 1.5×
-  slower and unstable, Monte Carlo falls into the "giving up" trap. *Figures:* `results/03_learning_curves.png`,
-  `results/04_learning_curves.png`, `results/04_final_drawings_mc.png`; summary table from
-  `results/04_comparison_summary.csv`.
+  slower and unstable, Monte Carlo falls into the "giving up" trap. *Figures:* `fig04_q_learning_curves.png`,
+  `fig05_tabular_comparison.png`, `fig06_monte_carlo_trap.png`, and the summary of all methods
+  `fig07_method_summary.png` (also useful in the discussion).
 - **3.3 Reward experiments** (≈ 1.25 p): the going-back penalty produces a human-like style; the early-stop
-  penalty and the delayed reward decide which algorithms can learn. *Figures:* `results/05_style_drawings.png`,
-  `results/06_early_stop_penalty.png`, `results/06_delayed_reward.png`.
+  penalty and the delayed reward decide which algorithms can learn. *Figures:* `fig08_writing_style.png`,
+  `fig09_early_stop_penalty.png`, `fig10_delayed_reward.png`.
 - **3.4 DQN on the 10 letters** (≈ 0.75 p): one network, ~1,200 episodes per letter, closer to the optimum than
-  the tables, but unstable. *Figure:* `results/07_dqn_learning.png`.
+  the tables, but unstable. *Figure:* `fig11_dqn_learning.png`.
 - **3.5 Generalisation** (≈ 1.5 p): 0 % on unseen letters (notebook 08), then the 2 × 2 design: only random
-  figures + rich observation generalise (92 %). *Figures:* `results/08_test_drawings.png`, the 2 × 2 table,
-  `results/09_learning_curves.png`, `results/09_B_all_letters.png`.
+  figures + rich observation generalise (92 %). *Figures:* `fig14_unseen_failures_07.png`,
+  `fig12_generalisation.png` (the 2 × 2 design), `fig13_unseen_letters.png`.
 
 ### 4. Discussion (≈ 2.5 pages)
 - The algorithm comparison table above: advantages, disadvantages, and what our experiments showed.
