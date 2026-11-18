@@ -18,6 +18,8 @@ Q-learning, SARSA, Monte Carlo, and finally a DQN able to draw letters it has ne
 | `src/tabular_agents.py` | Q-learning, SARSA, Monte Carlo (sample average or constant step), ε-greedy exploration |
 | `src/dqn.py` | Deep Q-Network: observation (basic 170 / rich 266), network, replay memory, training, evaluation |
 | `src/figures.py` | Random stroke figures used to train the generalising DQN |
+| `src/free_draw.py` | Step 9, the "blank sheet": free drawing on a 28×28 pixel canvas (`FreeDrawEnv`) |
+| `src/free_dqn.py` | Step 9b: DQN with a convolutional network for the blank sheet (Double DQN, compact replay memory, optional egocentric view) |
 | `src/evaluation.py` | Playing a policy and measuring it (return, steps, strokes, errors, completion) |
 | `src/visualization.py` | Drawing letters and episodes, animations |
 | `notebooks/` | The experiments, numbered in the order of the project (see [How to reproduce](#how-to-reproduce)) |
@@ -50,6 +52,7 @@ Run the notebooks in this order (Run All). Times measured on a laptop CPU (no GP
 | `07_dqn` | 7a | DQN on the 10 letters, 3 seeds; saves the networks `07_dqn_seed*.pt` | 02, 03 | 15–25 min (seconds if the networks are already in `results/`) |
 | `08_generalisation` | 7b | The 16 unseen letters: test of the networks of 07 | 07 | ~1 min |
 | `09_better_generalisation` | 7c | Random figures + rich observation (2 × 2 design) | 07 | ~1.5 min with the saved networks (~1.5 h with `RETRAIN = True`) |
+| `11_free_draw_environment` | 9a | The blank-sheet environment: target images, moves, rule checks, every letter drawable | — | < 1 min |
 | `10_report_figures` | 8b | The 14 final figures of the report in `figures/`, in the report style (recomputes a few curves, no network training) | 02–09 | ~7 min |
 
 Random seeds are fixed: the tabular results are exactly reproducible; PyTorch on CPU is not always bit-for-bit
@@ -192,6 +195,12 @@ Nuance for the discussion: the reward (+1 per correct segment) is built from the
 - **Remaining failures** (11 of 140 episodes): always at junctions in the middle of a stroke (J, K, T, H, I, W, Q): after one stroke, the next one starts far from the pen, the local view shows nothing missing, and the agent wanders until the 50-step limit.
 - Cost: ~20–35 min per B run. Discussion: choosing the state representation is part of the agent's design, like the reward; it gives no information about the solution, yet it takes the same algorithm from 0 % to 92 % on unseen letters.
 
+### Step 9a — The "blank sheet" environment (`notebooks/11_free_draw_environment.ipynb`, `src/free_draw.py`)
+- Extension of the project: the agent draws **freely on a 28×28 pixel canvas** (no grid points, no ready-made segments). Target = an **image** of the letter (strokes drawn as 1-pixel lines, the "skeleton"). Moves: 16 directions × 3 lengths (1, 2, 5 px) → 40 distinct moves, pen up or down, + STOP = **81 actions**. Observation: 4 images of 28×28 (target, drawing, pen position, pen down).
+- A drawing is judged with a **1-pixel tolerance**: a skeleton pixel is *covered* if a pixel at most 1 pixel away is inked; an inked pixel is *good* if it lies in the skeleton widened by 1 pixel. Rewards keep the spirit of the grid: +0.2 per newly covered skeleton pixel (≈ +1 per 5-pixel piece), −0.2 per inked pixel outside the zone, −0.05 per move, −0.3 per stroke, −0.2 off canvas; STOP: +2 if ≥ 95 % covered, −0.2 per uncovered pixel.
+- Checks: 6 hand-computed rule checks pass (e.g. whole L then STOP = 36 × 0.2 − 0.3 − 7 × 0.05 + 2 = +8.55); a random agent scribbles (5 % coverage, −27.7); a hand-written policy draws **all 26 letters perfectly**, so the task is feasible with these moves.
+- Why 28×28: already a real blank sheet (the pen goes anywhere), the standard size of handwritten characters (MNIST / EMNIST), and small enough for CPU training (256×256 would be ~80× more pixels).
+
 ---
 
 ## Algorithm comparison (for the discussion)
@@ -226,6 +235,9 @@ Filled in step by step with the results of our own experiments.
 | 8a. README as a report dossier (reproduction, outline, references) | Done |
 | 8b. Final report figures (`notebooks/10_report_figures.ipynb`) | Done |
 | 8c. Presentation (20 January 2027) | To do |
+| 9a. Blank sheet: environment (`src/free_draw.py`, notebook 11) | Done |
+| 9b. Blank sheet: DQN with a convolutional network (`src/free_dqn.py`) | In progress — first trials done: the whole-sheet view fails with several letters, the egocentric view (sheet seen from the pen) learns L and T perfectly in 100,000 steps; training on the 10 letters still to do |
+| 9c. Blank sheet: training on random figures, test on the 26 letters | To do |
 
 ---
 

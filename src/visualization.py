@@ -124,3 +124,39 @@ def plot_letters(letters, ncols=5, path=None):
     if path:
         fig.savefig(path, dpi=150, facecolor=SURFACE)
     return fig
+
+
+# ------------------------------------------------------------------ blank sheet (step 9)
+def _hex_to_rgb(h):
+    return np.array([int(h[i:i + 2], 16) / 255 for i in (1, 3, 5)])
+
+
+def draw_free_episode(ax, target, zone, history, title=None):
+    """A drawing on the 28x28 canvas: tolerance zone (very light), target skeleton (light grey),
+    pixels inked in the zone (blue) or outside it (red), pen-up moves (dashed), start (orange ring)."""
+    from .free_draw import line_pixels
+    size = target.shape[0]
+    img = np.ones((size, size, 3))
+    img[zone] = _hex_to_rgb("#f1f0ed")
+    img[target] = _hex_to_rgb("#d6d5d0")
+    moves = [info for info in history if info.get("event") == "move"]
+    for info in moves:
+        if info["pen_down"]:
+            for p in line_pixels(info["start"], info["end"]):
+                img[p] = _hex_to_rgb(DRAWN if zone[p] else OFF_LETTER)
+    ax.imshow(img, interpolation="nearest")
+    for info in moves:
+        if not info["pen_down"]:
+            (r1, c1), (r2, c2) = info["start"], info["end"]
+            ax.plot([c1, c2], [r1, r2], color=PEN_UP, lw=0.9, ls=(0, (2, 2)))
+    if moves:
+        r0, c0 = moves[0]["start"]
+        ax.plot(c0, r0, "o", ms=8, mfc="none", mec=START, mew=1.8)
+        r1, c1 = moves[-1]["end"]
+        ax.plot(c1, r1, "o", ms=4, color=PEN)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    for spine in ax.spines.values():
+        spine.set_color("#d6d5d0")
+    if title:
+        ax.set_title(title, fontsize=10, color=TEXT)
