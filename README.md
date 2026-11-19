@@ -5,6 +5,8 @@ Reinforcement Learning course project (N. Mayer, University of Strasbourg, 2026-
 An agent learns, by trial and error, to draw letters on a 5×5 grid.
 We compare several methods from the course: dynamic programming (value iteration),
 Q-learning, SARSA, Monte Carlo, and finally a DQN able to draw letters it has never seen.
+As an extension, the agent learns to draw freely on a blank 28×28 pixel sheet, where a convolutional DQN trained
+only on random figures draws 96 % of the 26 letters perfectly.
 
 **Contents:** [Repository structure](#repository-structure) · [Installation](#installation) · [How to reproduce](#how-to-reproduce) · [Project choices (MDP)](#project-choices-mdp-definition) · [Key results](#key-results-so-far) · [Algorithm comparison](#algorithm-comparison-for-the-discussion) · [Progress](#progress) · [Report outline](#report-outline) · [References](#references)
 
@@ -19,7 +21,7 @@ Q-learning, SARSA, Monte Carlo, and finally a DQN able to draw letters it has ne
 | `src/dqn.py` | Deep Q-Network: observation (basic 170 / rich 266), network, replay memory, training, evaluation |
 | `src/figures.py` | Random stroke figures used to train the generalising DQN |
 | `src/free_draw.py` | Step 9, the "blank sheet": free drawing on a 28×28 pixel canvas (`FreeDrawEnv`) |
-| `src/free_dqn.py` | Step 9b: DQN with a convolutional network for the blank sheet (Double DQN, compact replay memory, optional egocentric view) |
+| `src/free_dqn.py` | Steps 9b–9c: DQN with a convolutional network for the blank sheet (Double DQN, compact replay memory, optional egocentric view) |
 | `src/evaluation.py` | Playing a policy and measuring it (return, steps, strokes, errors, completion) |
 | `src/visualization.py` | Drawing letters and episodes, animations |
 | `notebooks/` | The experiments, numbered in the order of the project (see [How to reproduce](#how-to-reproduce)) |
@@ -53,6 +55,8 @@ Run the notebooks in this order (Run All). Times measured on a laptop CPU (no GP
 | `08_generalisation` | 7b | The 16 unseen letters: test of the networks of 07 | 07 | ~1 min |
 | `09_better_generalisation` | 7c | Random figures + rich observation (2 × 2 design) | 07 | ~1.5 min with the saved networks (~1.5 h with `RETRAIN = True`) |
 | `11_free_draw_environment` | 9a | The blank-sheet environment: target images, moves, rule checks, every letter drawable | — | < 1 min |
+| `12_free_draw_dqn` | 9b | Convolutional DQN on the blank sheet: whole sheet vs sheet seen from the pen, the 10 letters, first look at the 16 unseen letters | 11 | < 1 min with the saved network (~75 min with `RETRAIN = True`) |
+| `13_free_draw_generalisation` | 9c | The same agent trained on random figures only, tested on the 26 letters; comparison with notebook 12; failures | 12 | ~1.5 min with the saved network (~9 h with `RETRAIN = True`) |
 | `10_report_figures` | 8b | The 14 final figures of the report in `figures/`, in the report style (recomputes a few curves, no network training) | 02–09 | ~7 min |
 
 Random seeds are fixed: the tabular results are exactly reproducible; PyTorch on CPU is not always bit-for-bit
@@ -201,6 +205,22 @@ Nuance for the discussion: the reward (+1 per correct segment) is built from the
 - Checks: 6 hand-computed rule checks pass (e.g. whole L then STOP = 36 × 0.2 − 0.3 − 7 × 0.05 + 2 = +8.55); a random agent scribbles (5 % coverage, −27.7); a hand-written policy draws **all 26 letters perfectly**, so the task is feasible with these moves.
 - Why 28×28: already a real blank sheet (the pen goes anywhere), the standard size of handwritten characters (MNIST / EMNIST), and small enough for CPU training (256×256 would be ~80× more pixels).
 
+### Step 9b — Learning to draw on the blank sheet (`notebooks/12_free_draw_dqn.ipynb`, `src/free_dqn.py`)
+- Agent: **convolutional Double DQN** (van Hasselt et al., 2016): 3 convolutions (the first one at full resolution, the lines are 1 pixel wide) + 2 dense layers → 81 action values; replay memory stored as bits; **stabilised settings** (learning rate 0.0001, target network every 5,000 steps, gradient norm clipped at 10, memory of 200,000 transitions) because with the settings of step 7 learning on several letters rose and then collapsed.
+- **The way of seeing decides everything** (L and T, 100,000 steps): whole sheet (4 images of 28×28) → coverage up to 86 % but **0 % perfect drawings**; **egocentric view** = a 41×41 window centred on the pen (what is still missing, the drawing, the inside of the sheet, pen down) → **100 % perfect drawings**. Centred on the pen, "a piece is missing just to my right" always looks the same, wherever the pen is: the image version of the local view of step 7c. Numbers in `results/12_trials_two_letters.csv`.
+- **On the 10 letters: 100 % perfect drawings** from every natural starting point (100 % covered, 100 % of the ink on the letter, ended by STOP), after 500,000 steps (74 min on a laptop CPU). Network and learning curves saved in `results/12_free_dqn_10letters.*`.
+- Learning curves: coverage jumps to 81 % in 50,000 steps (the +0.2 per new pixel is immediate), dips to ~50 % while ε decreases, then rises; perfect drawings appear only after 150,000 steps and follow the STOP curve almost exactly: **learning when to stop is the hard part** (delayed reward, step 6b). The curve is still rising at the end (88 % at 475,000 steps, 100 % at 500,000): more steps would make the result more robust.
+- Style: the strokes follow the letters exactly, but some pen-up moves wander (E, H): a pen-up move costs only −0.05, so nothing pushes towards the shortest path.
+- **No generalisation yet**: on the 16 unseen letters, 0 % perfect, 21 % coverage on average. On most of them the greedy agent repeats a move that would leave the sheet (refused, so the observation does not change) until the 60-step limit; on M it covers 98 % but goes back and forth and never stops. Same lesson as step 7b: 10 training targets → 10 memorised behaviours. Step 9c applies the remedy of step 7c (random figures).
+
+### Step 9c — Generalisation on the blank sheet (`notebooks/13_free_draw_generalisation.ipynb`)
+- **Same agent and settings as step 9b, only the training targets change**: a new random figure at each episode (the generator of step 7c, `src/figures.py`, drawn on the canvas), 2,000,000 steps (8.9 h on a laptop CPU). Figures identical to a letter are rejected, so **all 26 letters are unseen**, including the 10 letters of the project.
+- **Model selection on a validation set**: learning oscillates, so the network is saved at each evaluation (every 50,000 steps) and we keep the best one on 50 held-out random figures (98 %, step 1,550,000); the letters are never used to choose, they stay a true test set. Files: `results/13_free_dqn_figures_best.pt` (network kept), `_last.pt` (step 2,000,000), `_curves.npz`.
+- **Result: 96 % of the 26 letters drawn perfectly** (63 episodes out of 66; 24 letters perfect from every starting point, including O, C, S, G, Q, B, K, R), coverage 99 %, precision 100 %.
+- **Specialist vs generalist** (perfect drawings): trained on the 10 letters (9b) → 100 % on the 10 letters, **0 %** on the 16 others, 8 % on random figures; trained on random figures (9c) → 95 %, **97 %**, 98 %. Same recipe as step 7c (diverse targets + an observation that makes the local rule learnable), here on pixels with 81 actions instead of a 5×5 grid with 17 actions (92 %).
+- Learning curves: no perfect drawing for 750,000 steps (coverage first collapses to 6 %, then rises as ε decreases), then a sudden take-off between 800,000 and 1,100,000 steps (0 → ~90 %), then oscillations between 80 and 98 % until the end. The network of step 1,400,000 would have scored only 80 % on the letters: choosing on held-out figures matters. Validation and letter curves move together, so random figures are a good proxy.
+- **Failures** (3 episodes): X from 2 of its 4 starting points and A from 1: the agent ends up going back and forth on a piece already drawn until the 60-step limit (on X, it switches to the other diagonal at the crossing). A deterministic greedy policy that sends two observations to each other loops forever; as in step 7c, the hard places are where strokes meet or cross.
+
 ---
 
 ## Algorithm comparison (for the discussion)
@@ -213,7 +233,7 @@ Filled in step by step with the results of our own experiments.
 | **Q-learning** (TD, off-policy, ch. 6) | Model-free (only plays); visits only the useful states; off-policy: learns the greedy policy while exploring; the max values the best continuation, which protects it from the "giving up" trap; fast | No guarantee of reaching the optimum in limited time; depends on exploration and parameters (α, ε, episodes); still a table: no generalisation to unseen letters | All letters drawn perfectly, 93–100 % of v*; fastest learner (first perfect drawing after 5,000–12,500 episodes); ~12 % of the states of H visited; 2–4 s per run |
 | **SARSA** (TD, on-policy, ch. 6) | Learns the value of the policy it actually follows (exploration included); bootstrapping lets it escape the "giving up" trap | Target depends on the (sometimes random) next action: noisier, needs a smaller α; optimal only if ε → 0; slower | Same final quality as Q-learning (84–100 % of v*) but ≈1.5× more episodes and unstable curves; with α = 0.5 it degrades. Expected "caution" not observed: our environment has no costly "cliff" |
 | **Monte Carlo** (on-policy, ch. 5) | No bootstrapping, so unbiased estimates of the returns of the current policy; simplest idea (average of returns) | Waits for the end of the episode; high variance; needs terminating episodes (our 50-step cut is an approximation); judges actions by the returns of its current, mostly random, policy | Fails on every letter (both versions): learns to draw a few segments and STOP ("giving up" trap). With a stronger early-stop penalty it learns 3 letters perfectly, still far behind Q-learning |
-| **DQN** (deep RL) | One network for all letters; generalises between similar states and letters (values for states never visited); experience replay reuses each transition; scales to large state spaces | Unstable (deadly triad), no convergence guarantee; many hyperparameters; more computation per step; harder to interpret | 10 letters with one network, 87–100 % of v*; ~1,200 episodes per letter (vs 5,000–12,500 for Q-learning); 99–100 % on letters where Q-learning stays at 93–97 %; but strong oscillations even at the end (1 run out of 3 not perfect at the end); 4–5.5 min per run. **Unseen letters: no generalisation** (0 % perfect, ≤ 33 % of the segments, never STOP): with 10 training targets it memorises 10 behaviours instead of a general rule. **With random training figures + a rich observation (step 7c): 92 % of the unseen letters drawn perfectly**; either ingredient alone gives 0 % |
+| **DQN** (deep RL) | One network for all letters; generalises between similar states and letters (values for states never visited); experience replay reuses each transition; scales to large state spaces | Unstable (deadly triad), no convergence guarantee; many hyperparameters; more computation per step; harder to interpret | 10 letters with one network, 87–100 % of v*; ~1,200 episodes per letter (vs 5,000–12,500 for Q-learning); 99–100 % on letters where Q-learning stays at 93–97 %; but strong oscillations even at the end (1 run out of 3 not perfect at the end); 4–5.5 min per run. **Unseen letters: no generalisation** (0 % perfect, ≤ 33 % of the segments, never STOP): with 10 training targets it memorises 10 behaviours instead of a general rule. **With random training figures + a rich observation (step 7c): 92 % of the unseen letters drawn perfectly**; either ingredient alone gives 0 %. **Blank sheet (step 9b, 81 actions, image observation): a convolutional Double DQN with a view centred on the pen draws the 10 letters perfectly** (500,000 steps, 74 min); the whole-sheet view gives 0 % perfect drawings. **Trained on random figures only (step 9c): 96 % of the 26 letters, all unseen, drawn perfectly** (2,000,000 steps, 8.9 h) |
 
 ---
 
@@ -236,8 +256,8 @@ Filled in step by step with the results of our own experiments.
 | 8b. Final report figures (`notebooks/10_report_figures.ipynb`) | Done |
 | 8c. Presentation (20 January 2027) | To do |
 | 9a. Blank sheet: environment (`src/free_draw.py`, notebook 11) | Done |
-| 9b. Blank sheet: DQN with a convolutional network (`src/free_dqn.py`) | In progress — first trials done: the whole-sheet view fails with several letters, the egocentric view (sheet seen from the pen) learns L and T perfectly in 100,000 steps; training on the 10 letters still to do |
-| 9c. Blank sheet: training on random figures, test on the 26 letters | To do |
+| 9b. Blank sheet: DQN with a convolutional network (`src/free_dqn.py`, notebook 12) | Done — egocentric view: the 10 letters 100 % perfect; unseen letters 0 % |
+| 9c. Blank sheet: training on random figures, test on the 26 letters (notebook 13) | Done — 96 % of the 26 unseen letters drawn perfectly |
 
 ---
 
@@ -248,64 +268,92 @@ Introduction / Methodology / Results / Discussion / Conclusion, **at least 8 ref
 (APA or Chicago), sources of inspiration cited in the introduction. Deadline: **10 January 2027, 23:59**
 (PDF + code to npromwang@unistra.fr); presentation on 20 January 2027.
 
-Suggested page budget (≈ 14 pages, leaving a margin). The final figures are in `figures/` (notebook 10);
-the GIF animations in `results/` are for the presentation.
+**How to use this outline.** For each part: what it must show, the key numbers, the figures, and where the
+details are in this README. It says *what* to write, not *how*: the writing is yours. Two parts: the **5×5 grid**
+(all the algorithms of the course, steps 1–8), then the **blank sheet** (free drawing on pixels, DQN only, step 9).
+Figures: grid in `figures/` (notebook 10); blank sheet in `results/` (run notebooks 12 and 13 first: ~3 min, they
+reload the trained networks). Page budget ≈ 14.5 pages.
 
-### 1. Introduction (≈ 1.5 pages)
-- The problem: an agent that learns to draw letters stroke by stroke, by trial and error.
-- Why it is a reinforcement learning problem and not supervised learning: nobody shows the agent how to draw (no
-  stroke order, no starting point, no correct move); it only receives states and rewards (section "Do we give
-  data to the agent?" above).
-- Inspiration and related work: SPIRAL (Ganin et al., 2018), Learning to Paint (Huang et al., 2019), stroke-based
-  handwriting (Lake et al., 2015).
-- Contributions (one sentence each): an MDP for letter writing; a comparison of DP, Q-learning, SARSA, Monte Carlo
-  and DQN against the exact optimum; experiments showing how the reward shapes the writing style and the ability
-  to learn; a DQN that draws 92 % of unseen letters thanks to diverse training targets and a suitable observation.
+### 1. Introduction (≈ 1 p)
+- **Show:** the problem, and why it is reinforcement learning, not supervised learning.
+- **Key points:** an agent learns to draw letters stroke by stroke, by trial and error; nobody shows it how (no
+  stroke order, no start, no correct move), it only gets states and rewards (see "Do we give data to the agent?").
+- **Contributions** (one sentence each): an MDP for letter writing; DP, Q-learning, SARSA, Monte Carlo and DQN
+  compared with the exact optimum; the reward shapes the style and the ability to learn; a DQN that draws 92 % of
+  unseen letters (grid); on the blank sheet, 96 % of the 26 unseen letters.
 
-### 2. Methodology (≈ 4 pages)
-- **2.1 The MDP** (≈ 1.25 p): grid, letters as sets of segments, state (position, pen, drawn mask), 17 actions,
-  deterministic transitions, reward table, γ = 0.99, 50-step limit, natural starting points. Justifications:
-  segments rather than cells, the stroke / move ratio, why 5×5 (state count 2^segments), off-letter segments not
-  stored in the state. *Figure:* `fig01_letters.png` (the 26 letters).
-- **2.2 Algorithms** (≈ 2 p): value iteration (Bellman optimality equation, deterministic simplification,
-  two-array version); Q-learning (eq. 6.8), SARSA (eq. 6.7), first-visit Monte Carlo (sample average vs constant
-  step); ε-greedy schedule; DQN (target, Huber loss, experience replay, target network, the 170-number
-  observation); step 7c: random figures and the rich 266-number observation. Pseudo-codes can go in the appendix.
-- **2.3 Experimental setup** (≈ 0.75 p): hyperparameter table, number of episodes / steps, seeds, evaluation
-  protocol (greedy policy from every starting point; % of the optimum v*; "perfect drawing" = complete, no
-  segment outside, STOP), hardware (laptop CPU) and computation times.
+### 2. Literature review (≈ 1.25 p)
+- **Show:** where the project comes from. For each theme: what these works do, and what we take from them (or how
+  we differ). References in "References" below.
+- **Themes:**
+  - MDPs and dynamic programming: Bellman (1957), Howard (1960), Puterman (1994), Sutton & Barto (2018) → our
+    reference optimum (value iteration).
+  - Learning without a model: Monte Carlo (Metropolis & Ulam, 1949; Singh & Sutton, 1996), TD learning (Sutton,
+    1988), Q-learning (Watkins & Dayan, 1992), SARSA (Rummery & Niranjan, 1994), reward shaping (Ng et al., 1999)
+    → the algorithms we compare.
+  - Deep RL: experience replay (Lin, 1992), DQN (Mnih et al., 2015), Double DQN (van Hasselt et al., 2016),
+    convolutional networks (LeCun et al., 1998), gradient clipping (Pascanu et al., 2013) → our DQNs.
+  - Generalisation: the goal as an input of the network (Schaul et al., 2015), diverse training tasks (Cobbe et
+    al., 2019) → training on random figures.
+  - Agents that draw, handwriting: SPIRAL (Ganin et al., 2018), Learning to Paint (Huang et al., 2019), sketching
+    with a DQN (Zhou et al., 2018), characters as strokes (Lake et al., 2015), MNIST / EMNIST (LeCun et al., 1998;
+    Cohen et al., 2017) → our inspiration. Difference to point out: they work at large scale (GPU, continuous
+    strokes); we start from a small MDP solved exactly, then a pixel version trained on a laptop CPU.
 
-### 3. Results (≈ 5.5 pages)
-- **3.1 The optimum** (≈ 0.5 p): every letter drawn perfectly in one stroke; exact convergence in 13–23
-  iterations. *Figures:* `fig02_optimal_drawings.png`, `fig03_convergence.png`.
-- **3.2 Tabular methods** (≈ 1.5 p): Q-learning learns every letter (93–100 % of v*), SARSA as good but 1.5×
-  slower and unstable, Monte Carlo falls into the "giving up" trap. *Figures:* `fig04_q_learning_curves.png`,
-  `fig05_tabular_comparison.png`, `fig06_monte_carlo_trap.png`, and the summary of all methods
-  `fig07_method_summary.png` (also useful in the discussion).
-- **3.3 Reward experiments** (≈ 1.25 p): the going-back penalty produces a human-like style; the early-stop
-  penalty and the delayed reward decide which algorithms can learn. *Figures:* `fig08_writing_style.png`,
-  `fig09_early_stop_penalty.png`, `fig10_delayed_reward.png`.
-- **3.4 DQN on the 10 letters** (≈ 0.75 p): one network, ~1,200 episodes per letter, closer to the optimum than
-  the tables, but unstable. *Figure:* `fig11_dqn_learning.png`.
-- **3.5 Generalisation** (≈ 1.5 p): 0 % on unseen letters (notebook 08), then the 2 × 2 design: only random
-  figures + rich observation generalise (92 %). *Figures:* `fig14_unseen_failures_07.png`,
-  `fig12_generalisation.png` (the 2 × 2 design), `fig13_unseen_letters.png`.
+### 3. Methodology (≈ 3.75 p)
+- **3.1 The MDP (≈ 1 p).** 5×5 grid, letter = set of segments, state = (pen position, pen down, segments drawn),
+  17 actions, deterministic, γ = 0.99, 50-step limit, natural starting points, reward table. To justify: segments
+  rather than cells, why 5×5 (2^segments states), segments outside the letter not stored. Details: "Project choices
+  (MDP definition)". *Figure:* `fig01_letters.png`.
+- **3.2 Algorithms (≈ 1.25 p).** Value iteration; Q-learning (eq. 6.8); SARSA (eq. 6.7); first-visit Monte Carlo
+  (average or constant step); ε-greedy; DQN (replay memory, target network, Huber loss, 170-number observation);
+  random figures + rich observation (266 numbers). Pseudo-codes in the appendix.
+- **3.3 Experimental setup (≈ 0.75 p).** Hyperparameter table, episodes / steps, seeds; evaluation = greedy policy
+  from every starting point, % of the optimum v*, "perfect drawing" = complete + nothing outside + STOP; laptop CPU
+  and computation times. Details: "Key results", one section per step.
+- **3.4 The blank sheet (≈ 0.75 p).** 28×28 canvas; 81 actions (16 directions × 1, 2 or 5 px, pen up or down, +
+  STOP); target = image of the letter, 1-pixel tolerance; rewards (+0.2 per new pixel covered, −0.2 per pixel
+  outside…); convolutional Double DQN with stabilised settings; view centred on the pen (41×41); network chosen on 50
+  held-out figures. Details: "Step 9a" to "Step 9c".
 
-### 4. Discussion (≈ 2.5 pages)
-- The algorithm comparison table above: advantages, disadvantages, and what our experiments showed.
-- What worked, what did not, and why ("discoveries"): the Monte Carlo trap; SARSA's expected caution not observed
-  (no "cliff" in our environment); reward shaping speeds up learning without changing the length of the optimal
-  drawings; the reward defines the style; DQN instability (deadly triad); generalisation needs diversity *and*
-  representation.
-- Limitations: 5×5 grid and approximated curves; hand-chosen starting points and letter shapes; one seed for some
-  experiments; CPU budget; truncated episodes for Monte Carlo; the rich observation is hand-designed.
-- Possible improvements: Double DQN, convolutional network, larger grids, curriculum learning, policy-gradient
-  methods, comparison with human stroke orders.
+### 4. Results (≈ 6 p)
+- **4.1 The optimum (≈ 0.5 p).** Every letter perfect, in a single stroke; exact convergence in 13–23 iterations.
+  *Figures:* `fig02_optimal_drawings.png`, `fig03_convergence.png`.
+- **4.2 Tabular methods (≈ 1.25 p).** Q-learning: every letter, 93–100 % of v*, first perfect drawing after
+  5,000–12,500 episodes. SARSA: same quality, 1.5× slower, unstable. Monte Carlo: fails on every letter ("giving up"
+  trap: draws a few segments and STOP). *Figures:* `fig04_q_learning_curves.png`, `fig05_tabular_comparison.png`,
+  `fig06_monte_carlo_trap.png`, `fig07_method_summary.png`.
+- **4.3 Reward experiments (≈ 1 p).** Going-back penalty −0.5 → human-like strokes (Q-learning: right number of
+  strokes for 9 letters out of 10). Early-stop penalty: Monte Carlo learns L from −2, T and X only at −5. Delayed
+  reward: Q-learning 8 letters out of 10, 2–3× slower; SARSA only L; Monte Carlo nothing. *Figures:*
+  `fig08_writing_style.png`, `fig09_early_stop_penalty.png`, `fig10_delayed_reward.png`.
+- **4.4 DQN on the 10 letters (≈ 0.5 p).** One network for all letters, 87–100 % of v*, ~1,200 episodes per letter
+  (vs 5,000–12,500), but unstable (90 → 43 → 87 % at the end). *Figure:* `fig11_dqn_learning.png`.
+- **4.5 Generalisation on the grid (≈ 1.25 p).** Unseen letters: 0 % (never STOP). 2×2 design: only random figures +
+  rich observation generalise, 92 % of the unseen letters; either one alone 0 %. *Figures:*
+  `fig14_unseen_failures_07.png`, `fig12_generalisation.png`, `fig13_unseen_letters.png`.
+- **4.6 The blank sheet (≈ 1.5 p).** Whole sheet 0 % perfect vs sheet seen from the pen 100 % (L, T). Trained on the
+  10 letters: 100 % on them, 0 % on the 16 others. Trained on random figures only: 96 % of the 26 unseen letters
+  (63 episodes out of 66); 3 failures (X, A: loops). *Figures:* `results/12_two_letters.png`,
+  `results/13_comparison.png`, `results/13_drawings_26_letters.png`.
 
-### 5. Conclusion (≈ 0.5 page)
+### 5. Discussion (≈ 2 p)
+- **Algorithms:** advantages and disadvantages of each, with our evidence: table "Algorithm comparison" above.
+- **Points to discuss:** the Monte Carlo trap; SARSA's caution not observed (no "cliff" in our task); the reward
+  defines the style; DQN instability (deadly triad); generalisation needs diverse targets *and* a good
+  representation (true on the grid and on the blank sheet); specialist vs generalist; choosing the network on a
+  validation set; cost (74 min for 10 letters vs 8.9 h for random figures).
+- **Limitations:** small grid, hand-made letters and starting points, few seeds, CPU budget, hand-designed
+  observations, blank-sheet targets that are not real handwriting, discrete moves, greedy loops.
+- **Improvements:** several seeds, real handwriting (EMNIST), continuous moves with policy gradient, curriculum
+  learning, loop detection.
 
-### References (not counted) and appendix (not counted)
-- Appendix ideas: pseudo-codes, per-letter tables, the 16 test letters, extra drawings.
+### 6. Conclusion (≈ 0.5 p)
+- Answer the question of the introduction in a few lines: one sentence per main result, one opening.
+
+### References and appendix (not counted)
+- **Appendix ideas:** pseudo-codes, per-letter tables, the 16 test letters, extra drawings, the random training
+  figures and the failures of the blank sheet.
 - **Statement on the use of AI** (the guideline allows AI for code and brainstorming): say that the code was
   written with the help of an AI assistant, then checked, run and explained by the group.
 
@@ -349,7 +397,7 @@ report; entries marked *(to verify)* are the least certain. Every reference must
   *Machine Learning, 8*, 293–321. — experience replay. *(to verify)*
 - Mnih, V., et al. (2015). Human-level control through deep reinforcement learning. *Nature, 518*(7540), 529–533. — DQN.
 - van Hasselt, H., Guez, A., & Silver, D. (2016). Deep reinforcement learning with double Q-learning. In
-  *Proceedings of the AAAI Conference on Artificial Intelligence*. — suggested improvement (Double DQN).
+  *Proceedings of the AAAI Conference on Artificial Intelligence*. — Double DQN, used on the blank sheet (step 9b).
 - Schaul, T., Horgan, D., Gregor, K., & Silver, D. (2015). Universal value function approximators. In *Proceedings
   of the 32nd International Conference on Machine Learning (ICML)*. — a network that receives the goal as input.
 - Cobbe, K., Klimov, O., Hesse, C., Kim, T., & Schulman, J. (2019). Quantifying generalization in reinforcement
@@ -357,6 +405,16 @@ report; entries marked *(to verify)* are the least certain. Every reference must
   tasks are needed to generalise.
 - Kingma, D. P., & Ba, J. (2015). Adam: A method for stochastic optimization. In *International Conference on
   Learning Representations (ICLR)*. — the optimiser of the DQN.
+- Pascanu, R., Mikolov, T., & Bengio, Y. (2013). On the difficulty of training recurrent neural networks. In
+  *Proceedings of the 30th International Conference on Machine Learning (ICML)*. — gradient norm clipping, used to
+  stabilise the blank-sheet DQN.
+
+**Images and handwriting (blank sheet)**
+- LeCun, Y., Bottou, L., Bengio, Y., & Haffner, P. (1998). Gradient-based learning applied to document
+  recognition. *Proceedings of the IEEE, 86*(11), 2278–2324. — convolutional networks and the 28×28 MNIST digits.
+- Cohen, G., Afshar, S., Tapson, J., & van Schaik, A. (2017). EMNIST: An extension of MNIST to handwritten letters.
+  In *2017 International Joint Conference on Neural Networks (IJCNN)* (pp. 2921–2926). *(to verify)* — 28×28
+  handwritten letters, a possible next step.
 
 **Inspiration (cite in the introduction)**
 - Ganin, Y., Kulkarni, T., Babuschkin, I., Eslami, S. M. A., & Vinyals, O. (2018). Synthesizing programs for images

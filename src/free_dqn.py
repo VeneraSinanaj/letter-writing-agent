@@ -64,7 +64,7 @@ HALF = EGO // 2
 
 
 def rebuild_egocentric(target_bits, ink_bits, pen, pen_down):
-    """Batch of egocentric observations (B, 4, 29, 29): the sheet seen from the pen.
+    """Batch of egocentric observations (B, 4, 41, 41): the sheet seen from the pen.
     Channels: missing part of the letter (skeleton not yet covered), ink, inside-the-canvas mask, pen down."""
     B = len(pen)
     target = np.unpackbits(target_bits, axis=1)[:, :N_PIX].reshape(B, SIZE, SIZE).astype(np.float32)
@@ -158,10 +158,11 @@ def train_free_dqn(letters=None, task_sampler=None, rewards=FreeRewards(), total
                    lr=5e-4, batch_size=64, buffer_size=100_000, learning_starts=5_000, train_every=4,
                    target_update=2_000, eps_start=1.0, eps_end=0.05, eps_fraction=0.5, double=True,
                    eval_letters=None, eval_figures=None, eval_every=20_000, max_steps=60, seed=0, verbose=True,
-                   threads=4, grad_clip=10.0, egocentric=False):
+                   threads=4, grad_clip=10.0, egocentric=False, callback=None):
     """Train a convolutional DQN on the blank sheet.
     - letters: training letters (a random one at each episode), used when task_sampler is None;
-    - task_sampler(rng) -> Letter: a new target at each episode (random figures, step 9c)."""
+    - task_sampler(rng) -> Letter: a new target at each episode (random figures, step 9c);
+    - callback(step, net, res, res_fig): called after each evaluation (e.g. to save the network during a long run)."""
     rng = np.random.default_rng(seed)
     torch.manual_seed(seed)
     torch.set_num_threads(threads)   # convolutions are faster with a few CPU threads
@@ -235,6 +236,8 @@ def train_free_dqn(letters=None, task_sampler=None, rewards=FreeRewards(), total
             eval_steps.append(step)
             eval_results.append(res)
             eval_fig_results.append(res_fig)
+            if callback:
+                callback(step, net, res, res_fig)
             if verbose:
                 perfect = np.mean([v["perfect"] for v in res.values()])
                 cover = np.mean([v["coverage"] for v in res.values()])

@@ -1,0 +1,15 @@
+config,steps,coverage,perfect
+whole sheet (lr 5e-4),20000,41,0
+whole sheet (lr 5e-4),40000,80,0
+whole sheet (lr 5e-4),60000,45,0
+whole sheet (lr 5e-4),80000,42,0
+whole sheet (stabilised),20000,0,0
+whole sheet (stabilised),40000,0,0
+whole sheet (stabilised),60000,51,0
+whole sheet (stabilised),80000,77,0
+whole sheet (stabilised),100000,86,0
+egocentric (stabilised),20000,45,0
+egocentric (stabilised),40000,92,25
+egocentric (stabilised),60000,76,17
+egocentric (stabilised),80000,84,67
+egocentric (stabilised),100000,100,100

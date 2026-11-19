@@ -117,3 +117,41 @@ DRAWING_LEGEND = ("white ring: start   ·   navy: segment drawn   ·   wine: seg
 
 def add_caption_line(fig, text=DRAWING_LEGEND):
     fig.text(0.5, -0.01, text, ha="center", va="top", fontsize=7.5, color=SLATE)
+
+
+# ------------------------------------------------------------------ blank sheet (step 9)
+def draw_canvas(ax, target, zone, history, title=None):
+    """A drawing on the 28x28 canvas: zone (very light), skeleton (light blue-grey), ink in the zone (navy),
+    ink outside the zone (wine), pen-up moves (dotted), start (white ring), final position (navy dot)."""
+    from matplotlib.colors import to_rgb
+    from .free_draw import line_pixels
+    size = target.shape[0]
+    img = np.ones((size, size, 3))
+    img[zone] = to_rgb("#eef1f5")
+    img[target] = to_rgb(TEMPLATE)
+    moves = [info for info in history if info.get("event") == "move"]
+    for info in moves:
+        if info["pen_down"]:
+            for p in line_pixels(info["start"], info["end"]):
+                img[p] = to_rgb(NAVY if zone[p] else WINE)
+    ax.imshow(img, interpolation="nearest")
+    for info in moves:
+        if not info["pen_down"]:
+            (r1, c1), (r2, c2) = info["start"], info["end"]
+            ax.plot([c1, c2], [r1, r2], color=SLATE, lw=0.7, ls=(0, (2, 2)))
+    if moves:
+        r0, c0 = moves[0]["start"]
+        ax.plot(c0, r0, "o", ms=6, mfc="white", mec=TEAL, mew=1.3)
+        r1, c1 = moves[-1]["end"]
+        ax.plot(c1, r1, "o", ms=3.5, color=NAVY)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    for spine in ax.spines.values():
+        spine.set_color(FRAME)
+        spine.set_linewidth(0.6)
+    if title:
+        ax.set_title(title, color=TEXT, pad=3)
+
+
+CANVAS_LEGEND = ("white ring: start   ·   navy: ink on the letter   ·   wine: ink outside   ·   "
+                 "dotted: pen up   ·   navy dot: final position")
