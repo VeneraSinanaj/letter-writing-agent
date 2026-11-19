@@ -26,7 +26,7 @@ only on random figures draws 96 % of the 26 letters perfectly.
 | `src/visualization.py` | Drawing letters and episodes, animations |
 | `notebooks/` | The experiments, numbered in the order of the project (see [How to reproduce](#how-to-reproduce)) |
 | `results/` | Figures, animations, tables and trained networks produced by the notebooks |
-| `figures/` | The final figures of the report, `fig01` to `fig14` (produced by notebook 10, report style) |
+| `figures/` | The final figures of the report, in the report style: `fig01` to `fig14` (grid, notebook 10), `fig15` to `fig17` (blank sheet, notebooks 12 and 13) |
 | `src/report_style.py` | The style of the report figures: dark muted colours, Times font, no titles inside the figures |
 
 ## Installation
@@ -55,8 +55,8 @@ Run the notebooks in this order (Run All). Times measured on a laptop CPU (no GP
 | `08_generalisation` | 7b | The 16 unseen letters: test of the networks of 07 | 07 | ~1 min |
 | `09_better_generalisation` | 7c | Random figures + rich observation (2 × 2 design) | 07 | ~1.5 min with the saved networks (~1.5 h with `RETRAIN = True`) |
 | `11_free_draw_environment` | 9a | The blank-sheet environment: target images, moves, rule checks, every letter drawable | — | < 1 min |
-| `12_free_draw_dqn` | 9b | Convolutional DQN on the blank sheet: whole sheet vs sheet seen from the pen, the 10 letters, first look at the 16 unseen letters | 11 | < 1 min with the saved network (~75 min with `RETRAIN = True`) |
-| `13_free_draw_generalisation` | 9c | The same agent trained on random figures only, tested on the 26 letters; comparison with notebook 12; failures | 12 | ~1.5 min with the saved network (~9 h with `RETRAIN = True`) |
+| `12_free_draw_dqn` | 9b | Convolutional DQN on the blank sheet: whole sheet vs sheet seen from the pen, the 10 letters, first look at the 16 unseen letters; report figure `fig15` | 11 | < 1 min with the saved network (~75 min with `RETRAIN = True`) |
+| `13_free_draw_generalisation` | 9c | The same agent trained on random figures only, tested on the 26 letters; comparison with notebook 12; failures; report figures `fig16`, `fig17` | 12 | ~1.5 min with the saved network (~9 h with `RETRAIN = True`) |
 | `10_report_figures` | 8b | The 14 final figures of the report in `figures/`, in the report style (recomputes a few curves, no network training) | 02–09 | ~7 min |
 
 Random seeds are fixed: the tabular results are exactly reproducible; PyTorch on CPU is not always bit-for-bit
@@ -271,8 +271,8 @@ Introduction / Methodology / Results / Discussion / Conclusion, **at least 8 ref
 **How to use this outline.** For each part: what it must show, the key numbers, the figures, and where the
 details are in this README. It says *what* to write, not *how*: the writing is yours. Two parts: the **5×5 grid**
 (all the algorithms of the course, steps 1–8), then the **blank sheet** (free drawing on pixels, DQN only, step 9).
-Figures: grid in `figures/` (notebook 10); blank sheet in `results/` (run notebooks 12 and 13 first: ~3 min, they
-reload the trained networks). Page budget ≈ 14.5 pages.
+All the report figures are in `figures/`: `fig01`–`fig14` for the grid (notebook 10), `fig15`–`fig17` for the
+blank sheet (notebooks 12 and 13). Page budget ≈ 14.5 pages.
 
 ### 1. Introduction (≈ 1 p)
 - **Show:** the problem, and why it is reinforcement learning, not supervised learning.
@@ -334,8 +334,8 @@ reload the trained networks). Page budget ≈ 14.5 pages.
   `fig14_unseen_failures_07.png`, `fig12_generalisation.png`, `fig13_unseen_letters.png`.
 - **4.6 The blank sheet (≈ 1.5 p).** Whole sheet 0 % perfect vs sheet seen from the pen 100 % (L, T). Trained on the
   10 letters: 100 % on them, 0 % on the 16 others. Trained on random figures only: 96 % of the 26 unseen letters
-  (63 episodes out of 66); 3 failures (X, A: loops). *Figures:* `results/12_two_letters.png`,
-  `results/13_comparison.png`, `results/13_drawings_26_letters.png`.
+  (63 episodes out of 66); 3 failures (X, A: loops). *Figures:* `fig15_blank_sheet_views.png`,
+  `fig16_blank_sheet_generalisation.png`, `fig17_blank_sheet_letters.png`.
 
 ### 5. Discussion (≈ 2 p)
 - **Algorithms:** advantages and disadvantages of each, with our evidence: table "Algorithm comparison" above.
